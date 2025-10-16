@@ -1,10 +1,12 @@
 """Special thanks to Chad Barton for the PoC"""
 
 from datetime import datetime
-import numpy
-from pystac_client import Client
+import json
+
 from dask import array as da
 import dask.distributed
+import numpy
+from pystac_client import Client
 
 from odc.algo import xr_geomedian
 from odc.geo import BoundingBox
@@ -20,6 +22,19 @@ def rewrite_asset_urls(in_url):
         return in_url
     return s3_prefix + in_url[len(http_prefix):]
 
+def find_feature(region_code):
+    with open("/src/nsw_tiles.geojson") as fl:
+        data = json.load(fl)
+
+    features = data['features']
+
+    for feature in features:
+        if feature['properties']['region_code'] == region_code:
+            return feature
+
+    raise ValueError(f"region not found: {region_code}")
+
+
 year = 2023
 region_code = "x45y17"
 
@@ -31,6 +46,22 @@ output_crs = "EPSG:3577"
 
 measurements = ['coastal', 'blue', 'green', 'red', 'nir08', 'swir16', 'swir22']
 masking_band = "qa_pixel"
+
+def bounds(feature):
+    geom = feature['geometry']
+    assert geom['type'] == "Polygon"
+    coords = geom['coordinates']
+    assert len(coords) == 1
+    points = coords[0]
+    lons = [p[0] for p in points]
+    lats = [p[1] for p in points]
+    left, right = min(lons), max(lons)
+    top, bottom = min(lats), max(lats)
+
+    return BoundingBox(
+        left=left, top=top, right=right, bottom=bottom, crs=query_crs
+    )
+
 
 central_lat =  -35.0
 central_lon =  150.0
