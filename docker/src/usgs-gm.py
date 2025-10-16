@@ -143,15 +143,18 @@ def write_geomedian(gm):
     for band in measurements:
        write_cog(gm[band], f'/output/gm_{region_code}_{band}_{year}.tif', overwrite=True)
 
-def setup():
-    dask_client = dask.distributed.Client(n_workers=1, threads_per_worker=get_cpu_quota())
+def setup_dask_with_rio():
+    ncpus = get_cpu_quota()
+    dask_client = dask.distributed.Client(n_workers=1, threads_per_worker=ncpus)
     configure_rio(cloud_defaults=True, aws={"requester_pays": True}, client=dask_client)
+    return dask_client
 
 def main():
-    setup()
+    dask_client = setup_dask_with_rio()
+    print('client cores', dask_client.ncores())
 
     bbox = bounds(find_feature(region_code))
-    print('searching', datetime.now())
+    print('searching', region_code, datetime.now())
     items = search(bbox)
     print('loading', datetime.now())
     ds = load(items, bbox).persist()
@@ -159,7 +162,9 @@ def main():
     gm = assign_crs(xr_geomedian(ds).load(), crs=output_crs)
     print('writing', datetime.now())
     write_geomedian(gm)
+
     print('done', datetime.now())
+    dask_client.shutdown()
 
 if __name__ == '__main__':
     main()
