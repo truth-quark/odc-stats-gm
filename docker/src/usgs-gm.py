@@ -63,36 +63,36 @@ def bounds(feature):
     )
 
 
-central_lat =  -35.0
-central_lon =  150.0
-buffer = 0.1
+def example_bbox():
+    central_lat =  -35.0
+    central_lon =  150.0
+    buffer = 0.1
 
-bbox = BoundingBox(
-    left=central_lon - buffer,
-    bottom=central_lat - buffer,
-    right=central_lon + buffer,
-    top=central_lat + buffer,
-    crs=query_crs
-)
+    return BoundingBox(
+        left=central_lon - buffer,
+        bottom=central_lat - buffer,
+        right=central_lon + buffer,
+        top=central_lat + buffer,
+        crs=query_crs
+    )
 
 
-def search():
+def search(bbox):
     stac_client = Client.open("https://landsatlook.usgs.gov/stac-server")
     l2col = 'landsat-c2l2-sr'
-    collections_query = [l2col]
 
     start_date = f"{year}-01-01"
     end_date = f"{year}-12-31"
     date_query = f"{start_date}/{end_date}"
 
     return stac_client.search(
-        collections=collections_query,
+        collections=[l2col],
         datetime=date_query,
         bbox=bbox.bbox
     ).item_collection()
 
 
-def load(items):
+def load(items, bbox):
     chunks = {"x": 640, "y": 640}
     optical_ds = stac_load(
         items=items,
@@ -141,7 +141,7 @@ def write_input_data(ds):
 
 def write_geomedian(gm):
     for band in measurements:
-       write_cog(gm[band], f'/output/{band}_gm_{year}.tif', overwrite=True)
+       write_cog(gm[band], f'/output/gm_{region_code}_{band}_{year}.tif', overwrite=True)
 
 def setup():
     dask_client = dask.distributed.Client(n_workers=1, threads_per_worker=get_cpu_quota())
@@ -150,10 +150,11 @@ def setup():
 def main():
     setup()
 
+    bbox = bounds(find_feature(region_code))
     print('searching', datetime.now())
-    items = search()
+    items = search(bbox)
     print('loading', datetime.now())
-    ds = load(items).persist()
+    ds = load(items, bbox).persist()
     print('geomedian', datetime.now())
     gm = assign_crs(xr_geomedian(ds).load(), crs=output_crs)
     print('writing', datetime.now())
