@@ -21,6 +21,10 @@ def rewrite_asset_urls(in_url):
     return s3_prefix + in_url[len(http_prefix):]
 
 year = 2023
+region_code = "x45y17"
+
+# lon extent: 1.1789152916070123
+# lat extent: 0.9742846444337658
 
 query_crs="EPSG:4326"
 output_crs = "EPSG:3577"
@@ -67,7 +71,7 @@ def load(items):
         bbox=bbox,
         resampling="average",
         dtype="float32",
-        chunks={"x": 600, "y": 600},
+        chunks={"x": 800, "y": 800},
         patch_url=rewrite_asset_urls,
     )
     
