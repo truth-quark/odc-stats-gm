@@ -2,6 +2,7 @@
 
 from datetime import datetime
 import json
+from pathlib import Path
 
 from dask import array as da
 import dask.distributed
@@ -140,8 +141,12 @@ def write_input_data(ds):
             write_cog(ds[band].isel(time=i), f'/output/{band}_{i}.tif', overwrite=True)
 
 def write_geomedian(gm):
+    folder = Path(f"/output/usgs_ls_gm/{region_code}")
+    folder.mkdir(parents=True, exist_ok=True)
+
     for band in measurements:
-       write_cog(gm[band], f'/output/gm_{region_code}_{band}_{year}.tif', overwrite=True)
+       filename = str(folder / f'gm_{region_code}_{band}_{year}.tif')
+       write_cog(gm[band], filename, overwrite=True)
 
 def setup_dask_with_rio():
     ncpus = get_cpu_quota()
