@@ -56,7 +56,7 @@ def bounds(feature):
     lons = [p[0] for p in points]
     lats = [p[1] for p in points]
     left, right = min(lons), max(lons)
-    top, bottom = min(lats), max(lats)
+    top, bottom = max(lats), min(lats)
 
     return BoundingBox(
         left=left, top=top, right=right, bottom=bottom, crs=query_crs
