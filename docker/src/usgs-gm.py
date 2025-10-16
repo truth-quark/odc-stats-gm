@@ -62,6 +62,7 @@ def search():
 
 
 def load(items):
+    chunks = {"x": 640, "y": 640}
     optical_ds = stac_load(
         items=items,
         bands=measurements,
@@ -71,7 +72,7 @@ def load(items):
         bbox=bbox,
         resampling="average",
         dtype="float32",
-        chunks={"x": 800, "y": 800},
+        chunks=chunks,
         patch_url=rewrite_asset_urls,
     )
     
@@ -84,7 +85,7 @@ def load(items):
         bbox=bbox,
         resampling="nearest",
         dtype="int32",
-        chunks={"x": 100, "y": 100},
+        chunks=chunks,
         patch_url=rewrite_asset_urls,
     )
 
