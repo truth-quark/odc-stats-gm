@@ -126,7 +126,7 @@ def search(bbox):
 
 
 def load(items, bbox):
-    chunks = {"x": 640, "y": 640}
+    chunks = {"x": 400, "y": 400}
     optical_ds = stac_load(
         items=items,
         bands=measurements,
@@ -209,7 +209,7 @@ def check_exists(region_code):
 
 def setup_dask_with_rio():
     ncpus = get_cpu_quota()
-    dask_client = dask.distributed.Client(n_workers=1, threads_per_worker=ncpus)
+    dask_client = dask.distributed.Client(processes=False, n_workers=1, threads_per_worker=ncpus)
     configure_rio(cloud_defaults=True, aws={"requester_pays": True}, client=dask_client)
     return dask_client
 
