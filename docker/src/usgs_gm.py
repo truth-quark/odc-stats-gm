@@ -40,9 +40,6 @@ def find_feature(region_code):
 year = 2023
 region_code = "x45y17"
 
-# lon extent: 1.1789152916070123
-# lat extent: 0.9742846444337658
-
 query_crs="EPSG:4326"
 output_crs = "EPSG:3577"
 
