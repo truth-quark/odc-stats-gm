@@ -169,9 +169,10 @@ def write_geomedian(gm, upload=True):
 
     for band in measurements:
        filename = f'{folder}/gm_{region_code}_{band}_{year}.tif'
-       write_cog(gm[band], str(root / filename), overwrite=True)
+       on_disk = str(root / filename)
+       write_cog(gm[band], on_disk, overwrite=True)
        if upload:
-           s3_client.upload_file(filename, "imam-dev-bucket", f"usgs-gm/geomad/{filename}")
+           s3_client.upload_file(on_disk, "imam-dev-bucket", f"usgs-gm/geomad/{filename}")
 
 
 def setup_dask_with_rio():
