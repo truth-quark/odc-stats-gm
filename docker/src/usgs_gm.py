@@ -156,10 +156,10 @@ def load(items, bbox):
     rescale = 10000.0
 
     masking_data = mask_ds[masking_band]
-    mask = ((masking_data & 1) == 0) & ((masking_data & (1 << 6)) == (1 << 6))
+    mask = (((masking_data & 1) == 0) & ((masking_data & (1 << 6)) == (1 << 6))).persist()
 
     for band in measurements:
-        optical_ds[band] = (optical_ds[band] * scale + offset) * rescale
+        optical_ds[band] = ((optical_ds[band] * scale + offset) * rescale).persist()
         where = da.where(mask, optical_ds[band], numpy.nan)
         optical_ds[band] = (optical_ds[band].dims, where)
 
