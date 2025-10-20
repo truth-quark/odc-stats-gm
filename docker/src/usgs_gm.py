@@ -34,12 +34,12 @@ s3_prefix = "usgs-gm/geomad"
 
 
 def read_tasks_list():
-    with open("inputs/tasks.list") as fl:
+    with open("/inputs/tasks.list") as fl:
         return [line.strip() for line in fl]
 
 
 def write_tasks_list(tasks_list):
-    with open("inputs/tasks.list", "w") as fl:
+    with open("/inputs/tasks.list", "w") as fl:
         for task in tasks_list:
             print(task, file=fl)
 
