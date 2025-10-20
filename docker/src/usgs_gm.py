@@ -33,6 +33,11 @@ s3_bucket = "imam-dev-bucket"
 s3_prefix = "usgs-gm/geomad"
 
 
+def log(*args, **kwargs):
+    print(*args, **kwargs)
+    sys.stdout.flush()
+
+
 def read_tasks_list():
     with open("/inputs/tasks.list") as fl:
         return [line.strip() for line in fl]
@@ -211,25 +216,19 @@ def setup_dask_with_rio():
 
 def execute_task(region_code):
     dask_client = setup_dask_with_rio()
-    print('client cores', dask_client.ncores())
-    sys.stdout.flush()
+    log('client cores', dask_client.ncores())
 
     bbox = bounds(find_feature(region_code))
-    print('searching', bbox.bbox, region_code, datetime.now())
-    sys.stdout.flush()
+    log('searching', bbox.bbox, region_code, datetime.now())
     items = search(bbox)
-    print('loading', datetime.now())
-    sys.stdout.flush()
+    log('loading', datetime.now())
     ds = load(items, bbox).persist()
-    print('geomedian', datetime.now())
-    sys.stdout.flush()
+    log('geomedian', datetime.now())
     gm = assign_crs(xr_geomedian(ds).load(), crs=output_crs)
-    print('writing', datetime.now())
-    sys.stdout.flush()
+    log('writing', datetime.now())
     write_geomedian(gm, region_code)
 
-    print('done', datetime.now())
-    sys.stdout.flush()
+    log('done', datetime.now())
     dask_client.shutdown()
 
 
@@ -245,6 +244,8 @@ def main():
 
         if not check_exists(region_code):
             execute_task(region_code)
+        else:
+            log(region_code, 'already exists!')
 
         tasks_list.remove(region_code)
         write_tasks_list(tasks_list)
