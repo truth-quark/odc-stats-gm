@@ -16,6 +16,16 @@ from odc.geo.xr import write_cog, assign_crs
 from odc.io.cgroups import get_cpu_quota
 from odc.stac import configure_rio, stac_load
 
+def read_tasks_list():
+    with open("inputs/tasks.list") as fl:
+        return [line.strip() for line in fl]
+
+
+def write_tasks_list(tasks_list):
+    with open("inputs/tasks.list", "w") as fl:
+        for task in tasks_list:
+            print(task, file=fl)
+
 
 def rewrite_asset_urls(in_url):
     http_prefix = 'https://landsatlook.usgs.gov/data/'
@@ -165,7 +175,7 @@ def main():
     print('client cores', dask_client.ncores())
 
     bbox = bounds(find_feature(region_code))
-    print('searching', region_code, datetime.now())
+    print('searching', bbox.bbox, region_code, datetime.now())
     items = search(bbox)
     print('loading', datetime.now())
     ds = load(items, bbox).persist()
