@@ -1,6 +1,7 @@
+import json
+
 from shapely.geometry import shape
 
-import json
 with open("states.geojson") as fl:
     states = json.load(fl)
 
@@ -23,3 +24,10 @@ for feature in au_grid['features']:
 
 with open("nsw_tiles.geojson", "w") as fl:
     json.dump(output, fl, indent=4)
+
+with open("nsw_tiles.geojson") as fl:
+    nsw_tiles = json.load(fl)
+
+with open("nsw_region_code.list", "w") as fl:
+    for feature in nsw_tiles['features']:
+        print(feature['properties']['region_code'], file=fl)
