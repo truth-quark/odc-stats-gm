@@ -7,7 +7,7 @@ from pathlib import Path
 from dask import array as da
 import dask.distributed
 import numpy
-from pystac_client import Client
+from pystac_client import Client, ItemCollection
 
 from odc.algo import xr_geomedian
 from odc.geo import BoundingBox
@@ -86,11 +86,21 @@ def search(bbox):
     end_date = f"{year}-12-31"
     date_query = f"{start_date}/{end_date}"
 
-    return stac_client.search(
+    landsat8 = stac_client.search(
         collections=[l2col],
         datetime=date_query,
-        bbox=bbox.bbox
-    ).item_collection()
+        bbox=bbox.bbox,
+        query={"platform": {"eq": "LANDSAT_8"}}
+    ).item_collection().items
+
+    landsat9 = stac_client.search(
+        collections=[l2col],
+        datetime=date_query,
+        bbox=bbox.bbox,
+        query={"platform": {"eq": "LANDSAT_9"}}
+    ).item_collection().items
+
+    return ItemCollection(sorted(landsat8 + landsat9, key=lambda item: item.properties['datetime']))
 
 
 def load(items, bbox):
@@ -136,9 +146,9 @@ def load(items, bbox):
     return optical_ds
 
 def write_input_data(ds):
-    for i, _ in enumerate(ds['time']):
-        for band in measurements + [masking_band]:
-            write_cog(ds[band].isel(time=i), f'/output/{band}_{i}.tif', overwrite=True)
+    for i, time in enumerate(numpy.datetime_as_string(ds['time'].data)):
+        for band in measurements: # + [masking_band]:
+            write_cog(ds[band].isel(time=i).compute(), f'/output/{band}_{time}_{i}.tif', overwrite=True)
 
 def write_geomedian(gm):
     folder = Path(f"/output/usgs_ls_gm/{region_code}")
