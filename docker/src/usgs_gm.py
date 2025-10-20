@@ -4,6 +4,7 @@ from datetime import datetime
 import json
 from pathlib import Path
 
+import boto3
 from dask import array as da
 import dask.distributed
 import numpy
@@ -156,13 +157,22 @@ def write_input_data(ds):
         for band in measurements: # + [masking_band]:
             write_cog(ds[band].isel(time=i).compute(), f'/output/{band}_{time}_{i}.tif', overwrite=True)
 
-def write_geomedian(gm):
-    folder = Path(f"/output/usgs_ls_gm/{region_code}")
-    folder.mkdir(parents=True, exist_ok=True)
+def write_geomedian(gm, upload=True):
+    if upload:
+        s3_client = boto3.client('s3')
+    else:
+        s3_client = None
+
+    root = Path("/output")
+    folder = f"usgs_ls_gm/{region_code}"
+    (root / folder).mkdir(parents=True, exist_ok=True)
 
     for band in measurements:
-       filename = str(folder / f'gm_{region_code}_{band}_{year}.tif')
-       write_cog(gm[band], filename, overwrite=True)
+       filename = f'{folder}/gm_{region_code}_{band}_{year}.tif'
+       write_cog(gm[band], str(root / filename), overwrite=True)
+       if upload:
+           s3_client.upload_file(filename, "imam-dev-bucket", f"usgs-gm/geomad/{filename}")
+
 
 def setup_dask_with_rio():
     ncpus = get_cpu_quota()
