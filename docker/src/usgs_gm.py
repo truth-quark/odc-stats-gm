@@ -3,8 +3,11 @@
 from datetime import datetime
 import json
 from pathlib import Path
+import random
+import sys
 
 import boto3
+import botocore
 from dask import array as da
 import dask.distributed
 import numpy
@@ -16,6 +19,19 @@ from odc.geo import BoundingBox
 from odc.geo.xr import write_cog, assign_crs
 from odc.io.cgroups import get_cpu_quota
 from odc.stac import configure_rio, stac_load
+
+
+year = 2023
+
+query_crs="EPSG:4326"
+output_crs = "EPSG:3577"
+
+measurements = ['coastal', 'blue', 'green', 'red', 'nir08', 'swir16', 'swir22']
+masking_band = "qa_pixel"
+
+s3_bucket = "imam-dev-bucket"
+s3_prefix = "usgs-gm/geomad"
+
 
 def read_tasks_list():
     with open("inputs/tasks.list") as fl:
@@ -35,6 +51,7 @@ def rewrite_asset_urls(in_url):
         return in_url
     return s3_prefix + in_url[len(http_prefix):]
 
+
 def find_feature(region_code):
     with open("/src/nsw_tiles.geojson") as fl:
         data = json.load(fl)
@@ -47,15 +64,6 @@ def find_feature(region_code):
 
     raise ValueError(f"region not found: {region_code}")
 
-
-year = 2023
-region_code = "x45y17"
-
-query_crs="EPSG:4326"
-output_crs = "EPSG:3577"
-
-measurements = ['coastal', 'blue', 'green', 'red', 'nir08', 'swir16', 'swir22']
-masking_band = "qa_pixel"
 
 def bounds(feature):
     geom = feature['geometry']
@@ -152,12 +160,14 @@ def load(items, bbox):
 
     return optical_ds
 
+
 def write_input_data(ds):
     for i, time in enumerate(numpy.datetime_as_string(ds['time'].data)):
-        for band in measurements: # + [masking_band]:
+        for band in measurements:
             write_cog(ds[band].isel(time=i).compute(), f'/output/{band}_{time}_{i}.tif', overwrite=True)
 
-def write_geomedian(gm, upload=True):
+
+def write_geomedian(gm, region_code, upload=True):
     if upload:
         s3_client = boto3.client('s3')
     else:
@@ -172,7 +182,24 @@ def write_geomedian(gm, upload=True):
        on_disk = str(root / filename)
        write_cog(gm[band], on_disk, overwrite=True)
        if upload:
-           s3_client.upload_file(on_disk, "imam-dev-bucket", f"usgs-gm/geomad/{filename}")
+           s3_client.upload_file(on_disk, s3_bucket, f"{s3_prefix}/{filename}")
+
+    filename = f"{folder}/{region_code}_{year}.completed"
+    on_disk = str(root / filename)
+    with open(on_disk, "w") as fl:
+        print("done!", file=fl)
+    if upload:
+        s3_client.upload_file(on_disk, s3_bucket, f"{s3_prefix}/{filename}")
+
+def check_exists(region_code):
+    s3_client = boto3.client('s3')
+    folder = f"usgs_ls_gm/{region_code}"
+    filename = f"{folder}/{region_code}_{year}.completed"
+    try:
+        s3_client.head_object(Bucket=s3_bucket, Key=f"{s3_prefix}/{filename}")
+        return True
+    except botocore.exceptions.ClientError:
+        return False
 
 
 def setup_dask_with_rio():
@@ -181,22 +208,46 @@ def setup_dask_with_rio():
     configure_rio(cloud_defaults=True, aws={"requester_pays": True}, client=dask_client)
     return dask_client
 
-def main():
+
+def execute_task(region_code):
     dask_client = setup_dask_with_rio()
     print('client cores', dask_client.ncores())
+    sys.stdout.flush()
 
     bbox = bounds(find_feature(region_code))
     print('searching', bbox.bbox, region_code, datetime.now())
+    sys.stdout.flush()
     items = search(bbox)
     print('loading', datetime.now())
+    sys.stdout.flush()
     ds = load(items, bbox).persist()
     print('geomedian', datetime.now())
+    sys.stdout.flush()
     gm = assign_crs(xr_geomedian(ds).load(), crs=output_crs)
     print('writing', datetime.now())
-    write_geomedian(gm)
+    sys.stdout.flush()
+    write_geomedian(gm, region_code)
 
     print('done', datetime.now())
+    sys.stdout.flush()
     dask_client.shutdown()
+
+
+def main():
+    tasks_list = read_tasks_list()
+    priority_region_code = "x45y17"
+
+    while tasks_list != []:
+        if priority_region_code not in tasks_list:
+            region_code = random.choice(tasks_list)
+        else:
+            region_code = priority_region_code
+
+        if not check_exists(region_code):
+            execute_task(region_code)
+
+        tasks_list.remove(region_code)
+        write_tasks_list(tasks_list)
 
 if __name__ == '__main__':
     main()
