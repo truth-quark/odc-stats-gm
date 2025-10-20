@@ -7,7 +7,8 @@ from pathlib import Path
 from dask import array as da
 import dask.distributed
 import numpy
-from pystac_client import Client, ItemCollection
+from pystac_client import Client
+from pystac import ItemCollection
 
 from odc.algo import xr_geomedian
 from odc.geo import BoundingBox
@@ -110,7 +111,6 @@ def load(items, bbox):
         bands=measurements,
         crs=output_crs,
         resolution=30,
-        groupby="solar_day",
         bbox=bbox,
         resampling="average",
         dtype="float32",
@@ -123,7 +123,6 @@ def load(items, bbox):
         bands=[masking_band],
         crs=output_crs,
         resolution=30,
-        groupby="solar_day",
         bbox=bbox,
         resampling="nearest",
         dtype="int32",
