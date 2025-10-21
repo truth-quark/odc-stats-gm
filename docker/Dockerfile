@@ -27,6 +27,7 @@ ENV GDAL_DRIVER_PATH=/env/lib/gdalplugins \
     GDAL_DATA=/env/share/gdal \
     PATH=/env/bin:$PATH
 
+RUN mkdir -p /output
 COPY src/ /src/
 WORKDIR /src
 
