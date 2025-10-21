@@ -125,7 +125,7 @@ def search(bbox):
 
 
 def load_mask(items, bbox):
-    with ThreadPoolExecutor(max_workers=get_cpu_quota()) as pool:
+    with ThreadPoolExecutor(max_workers=(3 * get_cpu_quota())) as pool:
         mask_ds = stac_load(
             items=items,
             bands=[masking_band],
@@ -143,7 +143,7 @@ def load_mask(items, bbox):
 
 
 def load_optical(items, bbox):
-    with ThreadPoolExecutor(max_workers=get_cpu_quota()) as pool:
+    with ThreadPoolExecutor(max_workers=(3 * get_cpu_quota())) as pool:
         optical_ds = stac_load(
             items=items,
             bands=measurements,
