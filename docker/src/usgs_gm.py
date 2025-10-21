@@ -138,7 +138,7 @@ def load(items, bbox):
         chunks=chunks,
         patch_url=rewrite_asset_urls,
     )
-    
+
     mask_ds = stac_load(
         items=items,
         bands=[masking_band],
