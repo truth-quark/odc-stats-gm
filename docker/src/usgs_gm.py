@@ -16,7 +16,6 @@ from pystac import ItemCollection
 from odc.algo import xr_geomedian
 from odc.geo import BoundingBox
 from odc.geo.xr import write_cog, assign_crs
-from odc.io.cgroups import get_cpu_quota
 from odc.stac import configure_rio, stac_load
 
 
@@ -125,7 +124,7 @@ def search(bbox):
 
 
 def load_mask(items, bbox):
-    with ThreadPoolExecutor(max_workers=(3 * get_cpu_quota())) as pool:
+    with ThreadPoolExecutor() as pool:
         mask_ds = stac_load(
             items=items,
             bands=[masking_band],
@@ -143,7 +142,7 @@ def load_mask(items, bbox):
 
 
 def load_optical(items, bbox):
-    with ThreadPoolExecutor(max_workers=(3 * get_cpu_quota())) as pool:
+    with ThreadPoolExecutor() as pool:
         optical_ds = stac_load(
             items=items,
             bands=measurements,
@@ -227,8 +226,7 @@ def execute_task(region_code):
     log('loading', datetime.now())
     ds = load(items, bbox)
     log('geomedian', datetime.now())
-    gm = xr_geomedian(ds, num_threads=get_cpu_quota())
-    gm = assign_crs(gm, crs=output_crs)
+    gm = assign_crs(xr_geomedian(ds), crs=output_crs)
     log('writing', datetime.now())
     write_geomedian(gm, region_code)
 
