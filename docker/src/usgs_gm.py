@@ -1,5 +1,6 @@
 """Special thanks to Chad Barton for the PoC"""
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import json
 from pathlib import Path
@@ -8,8 +9,6 @@ import sys
 
 import boto3
 import botocore
-from dask import array as da
-import dask.distributed
 import numpy
 from pystac_client import Client
 from pystac import ItemCollection
@@ -17,7 +16,6 @@ from pystac import ItemCollection
 from odc.algo import xr_geomedian
 from odc.geo import BoundingBox
 from odc.geo.xr import write_cog, assign_crs
-from odc.io.cgroups import get_cpu_quota
 from odc.stac import configure_rio, stac_load
 
 
@@ -125,43 +123,53 @@ def search(bbox):
     return ItemCollection(sorted(landsat8 + landsat9, key=lambda item: item.properties['datetime']))
 
 
-def load(items, bbox):
-    chunks = {"x": 400, "y": 400}
-    optical_ds = stac_load(
-        items=items,
-        bands=measurements,
-        crs=output_crs,
-        resolution=30,
-        bbox=bbox,
-        resampling="average",
-        dtype="float32",
-        chunks=chunks,
-        patch_url=rewrite_asset_urls,
-    )
+def load_mask(items, bbox):
+    with ThreadPoolExecutor() as pool:
+        mask_ds = stac_load(
+            items=items,
+            bands=[masking_band],
+            crs=output_crs,
+            resolution=30,
+            bbox=bbox,
+            resampling="nearest",
+            dtype="int32",
+            pool=pool,
+            patch_url=rewrite_asset_urls,
+        )
 
-    mask_ds = stac_load(
-        items=items,
-        bands=[masking_band],
-        crs=output_crs,
-        resolution=30,
-        bbox=bbox,
-        resampling="nearest",
-        dtype="int32",
-        chunks=chunks,
-        patch_url=rewrite_asset_urls,
-    )
+    masking_data = mask_ds[masking_band]
+    return ((masking_data & 1) == 0) & ((masking_data & (1 << 6)) == (1 << 6))
+
+
+def load_optical(items, bbox):
+    with ThreadPoolExecutor() as pool:
+        optical_ds = stac_load(
+            items=items,
+            bands=measurements,
+            crs=output_crs,
+            resolution=30,
+            bbox=bbox,
+            resampling="average",
+            dtype="float32",
+            pool=pool,
+            patch_url=rewrite_asset_urls,
+        )
 
     scale = 0.00002750
     offset = -0.200000
     rescale = 10000.0
 
-    masking_data = mask_ds[masking_band]
-    mask = (((masking_data & 1) == 0) & ((masking_data & (1 << 6)) == (1 << 6))).persist()
+    for band in measurements:
+        optical_ds[band] = ((optical_ds[band] * scale + offset) * rescale)
+    return optical_ds
+
+
+def load(items, bbox):
+    mask = load_mask(items, bbox)
+    optical_ds = load_optical(items, bbox)
 
     for band in measurements:
-        optical_ds[band] = ((optical_ds[band] * scale + offset) * rescale).persist()
-        where = da.where(mask, optical_ds[band], numpy.nan)
-        optical_ds[band] = (optical_ds[band].dims, where)
+        optical_ds[band] = (optical_ds[band].dims, numpy.where(mask, optical_ds[band], numpy.nan))
 
     return optical_ds
 
@@ -196,6 +204,7 @@ def write_geomedian(gm, region_code, upload=True):
     if upload:
         s3_client.upload_file(on_disk, s3_bucket, f"{s3_prefix}/{filename}")
 
+
 def check_exists(region_code):
     s3_client = boto3.client('s3')
     folder = f"usgs_ls_gm/{region_code}"
@@ -207,29 +216,20 @@ def check_exists(region_code):
         return False
 
 
-def setup_dask_with_rio():
-    ncpus = get_cpu_quota()
-    dask_client = dask.distributed.Client(processes=False, n_workers=1, threads_per_worker=ncpus)
-    configure_rio(cloud_defaults=True, aws={"requester_pays": True}, client=dask_client)
-    return dask_client
-
-
 def execute_task(region_code):
-    dask_client = setup_dask_with_rio()
-    log('client cores', dask_client.ncores())
+    configure_rio(cloud_defaults=True, aws={"requester_pays": True})
 
     bbox = bounds(find_feature(region_code))
     log('searching', bbox.bbox, region_code, datetime.now())
     items = search(bbox)
     log('loading', datetime.now())
-    ds = load(items, bbox).persist()
+    ds = load(items, bbox)
     log('geomedian', datetime.now())
-    gm = assign_crs(xr_geomedian(ds).load(), crs=output_crs)
+    gm = assign_crs(xr_geomedian(ds), crs=output_crs)
     log('writing', datetime.now())
     write_geomedian(gm, region_code)
 
     log('done', datetime.now())
-    dask_client.shutdown()
 
 
 def main():
