@@ -3,6 +3,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import json
+import multiprocessing
 from pathlib import Path
 import random
 import sys
@@ -225,7 +226,7 @@ def execute_task(region_code):
     log('loading', datetime.now())
     ds = load(items, bbox)
     log('geomedian', datetime.now())
-    gm = assign_crs(xr_geomedian(ds), crs=output_crs)
+    gm = assign_crs(xr_geomedian(ds, num_threads=multiprocessing.cpu_count()), crs=output_crs)
     log('writing', datetime.now())
     write_geomedian(gm, region_code)
 
