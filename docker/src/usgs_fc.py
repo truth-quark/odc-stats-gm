@@ -14,6 +14,8 @@ from pystac_client import Client
 from odc.geo.xr import write_cog, assign_crs
 from odc.stac import configure_rio, stac_load
 
+from fc.fractional_cover import LANDSAT_8_COEFFICIENTS, fractional_cover
+
 
 measurements = ['green', 'red', 'nir08', 'swir16', 'swir22']
 
@@ -69,8 +71,12 @@ def load(items):
     rescale = 10000.0
 
     for band in measurements:
-        optical_ds[band] = ((optical_ds[band] * scale + offset) * rescale)
-    return optical_ds
+        no_data = numpy.isnan(optical_ds[band])
+        optical_ds[band] = ((optical_ds[band] * scale + offset) * rescale).astype('int16').clip(0, 10000)
+        optical_ds[band] = (optical_ds[band].dims, numpy.where(no_data, -999, optical_ds[band]))
+        optical_ds[band].attrs['nodata'] = -999
+
+    return optical_ds.rename({'nir08': 'nir', 'swir16': 'swir1', 'swir22': 'swir2'})
 
 
 def write_input_data(ds):
@@ -89,7 +95,7 @@ def write_fc(fc, scene_id, upload=True):
     folder = scene_id
     (root / folder).mkdir(parents=True, exist_ok=True)
 
-    for band in measurements:
+    for band in fc.data_vars:
        filename = f'{folder}/fc_{scene_id}_{band}.tif'
        on_disk = str(root / filename)
        write_cog(fc[band], on_disk, overwrite=True)
@@ -116,8 +122,8 @@ def check_exists(scene_id):
 
 
 def xr_fc(ds):
-    # TODO
-    return ds
+    assert ds['time'].shape == (1,)
+    return fractional_cover(ds.isel(time=0), regression_coefficients=LANDSAT_8_COEFFICIENTS)
 
 
 def execute_task(scene_id):
