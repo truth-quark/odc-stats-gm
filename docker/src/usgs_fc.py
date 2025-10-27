@@ -2,7 +2,6 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-import multiprocessing
 from pathlib import Path
 import random
 import sys
@@ -11,17 +10,10 @@ import boto3
 import botocore
 import numpy
 from pystac_client import Client
-from pystac import ItemCollection
 
-from odc.algo import xr_geomedian
 from odc.geo.xr import write_cog, assign_crs
 from odc.stac import configure_rio, stac_load
 
-
-year = 2023
-
-query_crs="EPSG:4326"
-output_crs = "EPSG:3577"
 
 measurements = ['green', 'red', 'nir08', 'swir16', 'swir22']
 
@@ -54,41 +46,20 @@ def rewrite_asset_urls(in_url):
 
 
 def search(scene_id):
-    # TODO
     stac_client = Client.open("https://landsatlook.usgs.gov/stac-server")
     l2col = 'landsat-c2l2-sr'
 
-    start_date = f"{year}-01-01"
-    end_date = f"{year}-12-31"
-    date_query = f"{start_date}/{end_date}"
-
-    landsat8 = stac_client.search(
+    return stac_client.search(
         collections=[l2col],
-        datetime=date_query,
-        bbox=bbox.bbox,
-        query={"platform": {"eq": "LANDSAT_8"}}
-    ).item_collection().items
-
-    landsat9 = stac_client.search(
-        collections=[l2col],
-        datetime=date_query,
-        bbox=bbox.bbox,
-        query={"platform": {"eq": "LANDSAT_9"}}
-    ).item_collection().items
-
-    return ItemCollection(sorted(landsat8 + landsat9, key=lambda item: item.properties['datetime']))
+        query={"landsat:scene_id": {"eq": scene_id}}
+    ).item_collection()
 
 
-def load(items, bbox):
+def load(items):
     with ThreadPoolExecutor() as pool:
         optical_ds = stac_load(
             items=items,
             bands=measurements,
-            crs=output_crs,
-            resolution=30,
-            bbox=bbox,
-            resampling="average",
-            dtype="float32",
             pool=pool,
             patch_url=rewrite_asset_urls,
         )
@@ -146,7 +117,7 @@ def check_exists(scene_id):
 
 def xr_fc(ds):
     # TODO
-    pass
+    return ds
 
 
 def execute_task(scene_id):
@@ -156,9 +127,9 @@ def execute_task(scene_id):
     items = search(scene_id)
     log('loading', datetime.now())
     ds = load(items)
+
     log('fc', datetime.now())
-    # TODO output_crs
-    fc = assign_crs(xr_fc(ds), crs=output_crs)
+    fc = assign_crs(xr_fc(ds), crs=ds.odc.crs.to_epsg())
     log('writing', datetime.now())
     write_fc(fc, scene_id)
 
