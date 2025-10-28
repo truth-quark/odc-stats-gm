@@ -1,3 +1,5 @@
+"""Special thanks to Chad Barton for the PoC"""
+
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
@@ -18,7 +20,7 @@ from fc.fractional_cover import LANDSAT_8_COEFFICIENTS, fractional_cover
 measurements = ['green', 'red', 'nir08', 'swir16', 'swir22']
 
 s3_bucket = "imam-dev-bucket"
-s3_prefix = "usgs-fc-alb"
+s3_prefix = "usgs-fc"
 
 
 def log(*args, **kwargs):
@@ -61,8 +63,6 @@ def load(items):
             items=items,
             bands=measurements,
             pool=pool,
-            output_crs="EPSG:3577",
-            resolution=30,
             patch_url=rewrite_asset_urls,
         )
 
