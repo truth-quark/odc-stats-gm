@@ -12,13 +12,12 @@ from pystac_client import Client
 from odc.geo.xr import write_cog, assign_crs
 from odc.stac import configure_rio, stac_load
 
-from fc.fractional_cover import LANDSAT_8_COEFFICIENTS, fractional_cover
+from wofs.wofls import woffles_ard
 
-
-measurements = ['green', 'red', 'nir08', 'swir16', 'swir22']
+measurements = ['nbart_blue', 'nbart_green', 'nbart_red', 'nbart_nir', 'nbart_swir_1', 'nbart_swir_2', 'fmask']
 
 s3_bucket = "imam-dev-bucket"
-s3_prefix = "usgs-fc"
+s3_prefix = "usgs-wo"
 
 
 def log(*args, **kwargs):
@@ -27,12 +26,12 @@ def log(*args, **kwargs):
 
 
 def read_tasks_list():
-    with open("/src/fc_tasks.list") as fl:
+    with open("/src/wo_tasks.list") as fl:
         return [line.strip() for line in fl]
 
 
 def write_tasks_list(tasks_list):
-    with open("/src/fc_tasks.list", "w") as fl:
+    with open("/src/wo_tasks.list", "w") as fl:
         for task in tasks_list:
             print(task, file=fl)
 
@@ -74,6 +73,7 @@ def load(items):
         optical_ds[band] = (optical_ds[band].dims, numpy.where(no_data, -999, optical_ds[band]))
         optical_ds[band].attrs['nodata'] = -999
 
+    # TODO apply to everything
     return optical_ds.rename({'nir08': 'nir', 'swir16': 'swir1', 'swir22': 'swir2'})
 
 
@@ -83,7 +83,7 @@ def write_input_data(ds):
             write_cog(ds[band].isel(time=i).compute(), f'/output/{band}_{time}_{i}.tif', overwrite=True)
 
 
-def write_fc(fc, scene_id, upload=True):
+def write_wo(wo, scene_id, upload=True):
     if upload:
         s3_client = boto3.client('s3')
     else:
@@ -93,10 +93,10 @@ def write_fc(fc, scene_id, upload=True):
     folder = scene_id
     (root / folder).mkdir(parents=True, exist_ok=True)
 
-    for band in fc.data_vars:
-       filename = f'{folder}/fc_{scene_id}_{band}.tif'
+    for band in wo.data_vars:
+       filename = f'{folder}/wo_{scene_id}_{band}.tif'
        on_disk = str(root / filename)
-       write_cog(fc[band], on_disk, overwrite=True)
+       write_cog(wo[band], on_disk, overwrite=True)
        if upload:
            s3_client.upload_file(on_disk, s3_bucket, f"{s3_prefix}/{filename}")
 
@@ -119,8 +119,9 @@ def check_exists(scene_id):
         return False
 
 
-def xr_fc(ds):
+def xr_wo(ds):
     assert ds['time'].shape == (1,)
+    # TODO rewrite this
     return fractional_cover(ds.isel(time=0), regression_coefficients=LANDSAT_8_COEFFICIENTS)
 
 
@@ -132,10 +133,10 @@ def execute_task(scene_id):
     log('loading', datetime.now())
     ds = load(items)
 
-    log('fc', datetime.now())
-    fc = assign_crs(xr_fc(ds), crs=ds.odc.crs.to_epsg())
+    log('wo', datetime.now())
+    wo = assign_crs(xr_wo(ds), crs=ds.odc.crs.to_epsg())
     log('writing', datetime.now())
-    write_fc(fc, scene_id)
+    write_wo(wo, scene_id)
 
     log('done', datetime.now())
 
