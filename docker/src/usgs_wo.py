@@ -58,7 +58,7 @@ def search(scene_id):
 
 
 
-def load(items, bbox):
+def load(items):
     with ThreadPoolExecutor() as pool:
         optical_ds = stac_load(
             items=items,
@@ -170,14 +170,14 @@ def main():
     tasks_list = read_tasks_list()
 
     while tasks_list != []:
-        region_code = random.choice(tasks_list)
+        scene_id = random.choice(tasks_list)
 
-        if not check_exists(region_code):
-            execute_task(region_code)
+        if not check_exists(scene_id):
+            execute_task(scene_id)
         else:
-            log(region_code, 'already exists!')
+            log(scene_id, 'already exists!')
 
-        tasks_list.remove(region_code)
+        tasks_list.remove(scene_id)
         write_tasks_list(tasks_list)
 
 
