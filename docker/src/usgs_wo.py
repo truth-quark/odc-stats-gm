@@ -84,7 +84,7 @@ def load(items):
     for band in measurements:
         optical_ds[band] = ((optical_ds[band] * scale + offset) * rescale)
 
-    return xarray.concat([optical_ds, mask_ds])
+    return xarray.merge([optical_ds, mask_ds])
 
 
 def write_input_data(scene_id, ds):
