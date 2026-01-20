@@ -14,7 +14,7 @@ from odc.geo.xr import write_cog, assign_crs
 from odc.stac import configure_rio, stac_load
 
 
-measurements = ['coastal', 'blue', 'green', 'red', 'nir08', 'swir16', 'swir22']
+measurements = ['blue', 'green', 'red', 'nir08', 'swir16', 'swir22']
 masking_band = "qa_pixel"
 
 s3_bucket = "imam-dev-bucket"
@@ -63,7 +63,6 @@ def load(items):
         optical_ds = stac_load(
             items=items,
             bands=measurements,
-            dtype="float32",
             pool=pool,
             patch_url=rewrite_asset_urls,
         )
@@ -81,8 +80,16 @@ def load(items):
     offset = -0.200000
     rescale = 10000.0
 
+    masking_data = mask_ds[masking_band]
+    mask = ((masking_data & 1) == 0)
+
     for band in measurements:
-        optical_ds[band] = ((optical_ds[band] * scale + offset) * rescale)
+        band = ((optical_ds[band] * scale + offset) * rescale)
+        band = numpy.clip(band, 0, 10000)
+        band = band.astype('int16')
+        band = numpy.where(mask, band, -999)
+        optical_ds[band] = (optical_ds[band].dims, band)
+        optical_ds[band].attrs['nodata'] = -999
 
     return xarray.merge([optical_ds, mask_ds])
 
