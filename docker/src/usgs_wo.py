@@ -10,9 +10,13 @@ import numpy
 from pystac_client import Client
 import xarray
 
+from dask import array as da
 from odc.geo.xr import write_cog, assign_crs
 from odc.stac import configure_rio, stac_load
 
+from wofs import classifier
+from wofs.wofls import _fix_nodata_to_single_value
+from wofs.filters import eo_filter, fmask_filter, terrain_filter, c2_filter
 
 measurements = ['blue', 'green', 'red', 'nir08', 'swir16', 'swir22']
 masking_band = "qa_pixel"
@@ -84,19 +88,22 @@ def load(items):
     mask = ((masking_data & 1) == 0)
 
     for band in measurements:
-        band = ((optical_ds[band] * scale + offset) * rescale)
-        band = numpy.clip(band, 0, 10000)
-        band = band.astype('int16')
-        band = numpy.where(mask, band, -999)
-        optical_ds[band] = (optical_ds[band].dims, band)
+        data = ((optical_ds[band] * scale + offset) * rescale)
+        data = numpy.clip(data, 0, 10000)
+        data = data.where((mask | ~numpy.isnan(data)))
+        data = data.fillna(-999.0)
+        data = data.astype('int16')
+        optical_ds[band] = data
         optical_ds[band].attrs['nodata'] = -999
 
     return xarray.merge([optical_ds, mask_ds])
 
 
 def write_input_data(scene_id, ds):
+    Path(f'/output/{scene_id}').mkdir(parents=True, exist_ok=True)
+
     for i, time in enumerate(numpy.datetime_as_string(ds['time'].data)):
-        for band in measurements + ['fmask']:
+        for band in measurements + ['fmask', 'water']:
             write_cog(ds[band].isel(time=i).compute(), f'/output/{scene_id}/{band}_{time}_{i}.tif', overwrite=True)
 
 
@@ -158,6 +165,18 @@ def qa_to_fmask(qa_pixel):
     return fmask
 
 
+def calculate_wofs(data):
+    # there should be only one time slice anyway
+    spectal_bands = data.isel(time=0)[measurements].to_array(dim="band")
+
+    water = classifier.classify(spectal_bands)
+
+    _fix_nodata_to_single_value(water)
+
+    assert water.dtype == numpy.uint8
+
+    return water
+
 
 def execute_task(scene_id):
     configure_rio(cloud_defaults=True, aws={"requester_pays": True})
@@ -167,6 +186,7 @@ def execute_task(scene_id):
     log('loading', datetime.now())
     ds = load(items)
     ds['fmask'] = (ds['qa_pixel'].dims, qa_to_fmask(ds['qa_pixel']))
+    ds['water'] = calculate_wofs(ds)
     log('writing', datetime.now())
     write_input_data(scene_id, ds)
 
