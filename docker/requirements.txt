@@ -15,7 +15,8 @@ odc-cloud>=0.2.5
 odc-dscache>=1.9
 odc-geo>=0.5.0rc1
 odc-stac>=0.4.0
-# wofs
+wofs
+ephem
 pudb
 
 # odc-stac is in PyPI

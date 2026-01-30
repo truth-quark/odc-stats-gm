@@ -17,9 +17,6 @@ ENV CC=/env/bin/x86_64-conda_cos6-linux-gnu-gcc \
     LDSHARED="/env/bin/x86_64-conda_cos6-linux-gnu-gcc -pthread -shared -B /env/compiler_compat -L/env/lib -Wl,-rpath=/env/lib -Wl,--no-as-needed"
 RUN micromamba run -p /env pip install --no-cache-dir \
     --no-build-isolation -r /conf/requirements.txt
-RUN micromamba run -p /env pip install --no-deps \
-    --extra-index-url https://packages.dea.ga.gov.au/ \
-    wofs
 
 FROM ubuntu:jammy-20240212
 COPY --from=stats-conda /env /env
