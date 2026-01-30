@@ -23,7 +23,7 @@ COPY --from=stats-conda /env /env
 COPY distributed.yaml  /etc/dask/
 
 ENV GDAL_DRIVER_PATH=/env/lib/gdalplugins \ 
-    PROJ_LIB=/env/share/proj \
+#    PROJ_LIB=/env/share/proj \
     GDAL_DATA=/env/share/gdal \
     PATH=/env/bin:$PATH
 
