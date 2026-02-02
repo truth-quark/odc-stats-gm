@@ -165,15 +165,22 @@ def qa_to_fmask(qa_pixel):
     return fmask
 
 
-def calculate_wofs(data):
+def calculate_wofs(data_t):
     # there should be only one time slice anyway
-    spectal_bands = data.isel(time=0)[measurements].to_array(dim="band")
+    data = data_t.isel(time=0)
 
-    water = classifier.classify(spectal_bands)
+    dsm_path = 'https://dea-public-data.s3-ap-southeast-2.amazonaws.com/projects/elevation/ga_srtm_dem1sv1_0/dem1sv1_0.tif'
+    terrain_buffer = 0
+
+    spectal_bands = data[measurements].to_array(dim="band")
+
+    # TODO terrain filter
+    water = classifier.classify(spectal_bands) | fmask_filter(data['fmask']) | eo_filter(data)
 
     _fix_nodata_to_single_value(water)
 
     assert water.dtype == numpy.uint8
+    water = water.expand_dims(dim={"time": data['time']}, axis=0)
 
     return water
 
