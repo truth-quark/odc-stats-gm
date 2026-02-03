@@ -190,7 +190,7 @@ def calculate_wofs(data_t, dsm):
 
 
 def load_dsm(data):
-    dsm_path = 'https://dea-public-data.s3-ap-southeast-2.amazonaws.com/projects/elevation/ga_srtm_dem1sv1_0/dem1sv1_0.tif'
+    dsm_path = 's3://dea-non-public-data/dsm/dsm1sv1_0_Clean.tiff'
     terrain_buffer = 0
 
     gbox = data.odc.geobox.buffered(terrain_buffer, terrain_buffer)
