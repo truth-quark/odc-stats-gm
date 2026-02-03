@@ -13,6 +13,8 @@ import xarray
 from dask import array as da
 from odc.geo.xr import write_cog, assign_crs
 from odc.stac import configure_rio, stac_load
+from datacube.testutils.io import dc_read
+
 
 from wofs import classifier
 from wofs.wofls import _fix_nodata_to_single_value
@@ -85,6 +87,8 @@ def load(items):
     rescale = 10000.0
 
     masking_data = mask_ds[masking_band]
+    masking_data.attrs['nodata'] = 1
+
     mask = ((masking_data & 1) == 0)
 
     for band in measurements:
@@ -103,7 +107,7 @@ def write_input_data(scene_id, ds):
     Path(f'/output/{scene_id}').mkdir(parents=True, exist_ok=True)
 
     for i, time in enumerate(numpy.datetime_as_string(ds['time'].data)):
-        for band in measurements + ['fmask', 'water']:
+        for band in measurements + ['fmask', 'water', 'elevation']:
             write_cog(ds[band].isel(time=i).compute(), f'/output/{scene_id}/{band}_{time}_{i}.tif', overwrite=True)
 
 
@@ -165,24 +169,37 @@ def qa_to_fmask(qa_pixel):
     return fmask
 
 
-def calculate_wofs(data_t):
+def calculate_wofs(data_t, dsm):
     # there should be only one time slice anyway
     data = data_t.isel(time=0)
 
-    dsm_path = 'https://dea-public-data.s3-ap-southeast-2.amazonaws.com/projects/elevation/ga_srtm_dem1sv1_0/dem1sv1_0.tif'
-    terrain_buffer = 0
-
     spectal_bands = data[measurements].to_array(dim="band")
 
-    # TODO terrain filter
-    water = classifier.classify(spectal_bands) | fmask_filter(data['fmask']) | eo_filter(data)
+    wet_dry = classifier.classify(spectal_bands)
+    fmask = fmask_filter(data['fmask'])
+    eo = eo_filter(data)
+    terrain = terrain_filter(dsm, data, dsm.elevation.attrs.get('nodata', numpy.nan))
+    water = wet_dry | fmask | eo | terrain
 
     _fix_nodata_to_single_value(water)
 
     assert water.dtype == numpy.uint8
-    water = water.expand_dims(dim={"time": data['time']}, axis=0)
+    water = water.expand_dims(dim={"time": data_t['time']}, axis=0)
 
     return water
+
+
+def load_dsm(data):
+    dsm_path = 'https://dea-public-data.s3-ap-southeast-2.amazonaws.com/projects/elevation/ga_srtm_dem1sv1_0/dem1sv1_0.tif'
+    terrain_buffer = 0
+
+    gbox = data.odc.geobox.buffered(terrain_buffer, terrain_buffer)
+    dsm = dc_read(dsm_path, geobox=gbox, resampling="bilinear")
+    return xarray.Dataset(
+            data_vars={'elevation': (('y', 'x'), dsm)},
+            coords={dim: coord.values for dim, coord in gbox.coordinates.items()},
+            attrs={'crs': gbox.crs}
+        )
 
 
 def execute_task(scene_id):
@@ -192,8 +209,16 @@ def execute_task(scene_id):
     items = search(scene_id)
     log('loading', datetime.now())
     ds = load(items)
+    dsm = load_dsm(ds)
+
+    log('calculating', datetime.now())
     ds['fmask'] = (ds['qa_pixel'].dims, qa_to_fmask(ds['qa_pixel']))
-    ds['water'] = calculate_wofs(ds)
+    ds['fmask'].attrs['nodata'] = 0
+    del ds['qa_pixel']
+
+    ds['water'] = calculate_wofs(ds, dsm)
+    ds['elevation'] = dsm['elevation'].expand_dims(dim={'time': ds['time']}, axis=0)
+
     log('writing', datetime.now())
     write_input_data(scene_id, ds)
 
