@@ -10,21 +10,21 @@ import numpy
 from pystac_client import Client
 import xarray
 
-from dask import array as da
-from odc.geo.xr import write_cog, assign_crs
+from odc.geo.xr import write_cog
 from odc.stac import configure_rio, stac_load
 from datacube.testutils.io import dc_read
 
 
 from wofs import classifier
 from wofs.wofls import _fix_nodata_to_single_value
-from wofs.filters import eo_filter, fmask_filter, terrain_filter, c2_filter
+from wofs.filters import eo_filter, fmask_filter, terrain_filter
 
 measurements = ['blue', 'green', 'red', 'nir08', 'swir16', 'swir22']
 masking_band = "qa_pixel"
+output_bands = ['water', 'elevation']
 
 s3_bucket = "imam-dev-bucket"
-s3_prefix = "usgs-wo/"
+s3_prefix = "usgs-wo"
 
 task_list_file = "/src/tas_wo.list"
 
@@ -43,6 +43,10 @@ def write_tasks_list(tasks_list):
     with open(task_list_file, "w") as fl:
         for task in tasks_list:
             print(task, file=fl)
+
+
+def region_code(scene_id):
+    return scene_id[3:9]
 
 
 def rewrite_asset_urls(in_url):
@@ -103,48 +107,37 @@ def load(items):
     return xarray.merge([optical_ds, mask_ds])
 
 
-def write_input_data(scene_id, ds):
-    Path(f'/output/{scene_id}').mkdir(parents=True, exist_ok=True)
-
-    for i, time in enumerate(numpy.datetime_as_string(ds['time'].data)):
-        for band in measurements + ['fmask', 'water', 'elevation']:
-            write_cog(ds[band].isel(time=i).compute(), f'/output/{scene_id}/{band}_{time}_{i}.tif', overwrite=True)
-
-
-def write_geomedian(gm, region_code, upload=True):
+def write_wo(scene_id, ds, upload=True):
     if upload:
         s3_client = boto3.client('s3')
     else:
         s3_client = None
 
     root = Path("/output")
-    folder = f"usgs_ls_gm/{region_code}"
+    folder = f"{s3_prefix}/{region_code(scene_id)}"
     (root / folder).mkdir(parents=True, exist_ok=True)
 
-    for band in measurements:
-       filename = f'{folder}/gm_{region_code}_{band}_{year}.tif'
+    for band in output_bands:
+       filename = f'{folder}/wo_{scene_id}_{band}.tif'
        on_disk = str(root / filename)
-       write_cog(gm[band], on_disk, overwrite=True)
+       write_cog(ds[band].isel(time=0), on_disk, overwrite=True)
        if upload:
-           s3_client.upload_file(on_disk, s3_bucket, f"{s3_prefix}/{filename}")
+           s3_client.upload_file(on_disk, s3_bucket, f"{filename}")
 
-    filename = f"{folder}/{region_code}_{year}.completed"
+    filename = f"{folder}/wo_{scene_id}.completed"
     on_disk = str(root / filename)
     with open(on_disk, "w") as fl:
         print("done!", file=fl)
     if upload:
-        s3_client.upload_file(on_disk, s3_bucket, f"{s3_prefix}/{filename}")
+        s3_client.upload_file(on_disk, s3_bucket, f"{filename}")
 
 
-def check_exists(region_code):
-    return False
-
-    # TODO
+def check_exists(scene_id):
     s3_client = boto3.client('s3')
-    folder = f"usgs_ls_gm/{region_code}"
-    filename = f"{folder}/{region_code}_{year}.completed"
+    folder = f"{s3_prefix}/{region_code(scene_id)}"
+    filename = f"{folder}/wo_{scene_id}.completed"
     try:
-        s3_client.head_object(Bucket=s3_bucket, Key=f"{s3_prefix}/{filename}")
+        s3_client.head_object(Bucket=s3_bucket, Key=f"{filename}")
         return True
     except botocore.exceptions.ClientError:
         return False
@@ -220,7 +213,7 @@ def execute_task(scene_id):
     ds['elevation'] = dsm['elevation'].expand_dims(dim={'time': ds['time']}, axis=0)
 
     log('writing', datetime.now())
-    write_input_data(scene_id, ds)
+    write_wo(scene_id, ds)
 
     log('done', datetime.now())
 
