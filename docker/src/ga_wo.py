@@ -147,6 +147,7 @@ def calculate_wofs(data_t, dsm):
 
     assert water.dtype == numpy.uint8
     water = water.expand_dims(dim={"time": data_t['time']}, axis=0)
+    water.attrs['nodata'] = 1
 
     return water
 
@@ -175,6 +176,7 @@ def execute_task(scene_id):
 
     log('calculating', datetime.now())
 
+    ds['blue'] = ds['nbart_blue']
     ds['water'] = calculate_wofs(ds, dsm)
     ds['elevation'] = dsm['elevation'].expand_dims(dim={'time': ds['time']}, axis=0)
 
