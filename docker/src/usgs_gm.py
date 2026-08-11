@@ -20,14 +20,13 @@ from odc.geo.xr import write_cog, assign_crs
 from odc.stac import configure_rio, stac_load
 
 
-year = 2023
-
-query_crs="EPSG:4326"
-output_crs = "EPSG:3577"
+query_crs = "EPSG:4326"
+output_crs = "EPSG:3577"   # we probably want the native CRS for Solomons
 
 measurements = ['coastal', 'blue', 'green', 'red', 'nir08', 'swir16', 'swir22']
 masking_band = "qa_pixel"
 
+product = "HY"  # [HY, FY]
 s3_bucket = "dea-dme-dev"
 s3_prefix = "products/solomons/geomad"
 
@@ -85,26 +84,12 @@ def bounds(feature):
     )
 
 
-def example_bbox():
-    central_lat =  -35.0
-    central_lon =  150.0
-    buffer = 0.1
-
-    return BoundingBox(
-        left=central_lon - buffer,
-        bottom=central_lat - buffer,
-        right=central_lon + buffer,
-        top=central_lat + buffer,
-        crs=query_crs
-    )
-
-
 def search(bbox):
     stac_client = Client.open("https://landsatlook.usgs.gov/stac-server")
     l2col = 'landsat-c2l2-sr'
 
-    start_date = f"{year}-01-01"
-    end_date = f"{year}-12-31"
+    start_date = f"2023-01-01"
+    end_date = f"2023-12-31"
     date_query = f"{start_date}/{end_date}"
 
     landsat8 = stac_client.search(
@@ -192,13 +177,13 @@ def write_geomedian(gm, region_code, upload=True):
     (root / folder).mkdir(parents=True, exist_ok=True)
 
     for band in measurements:
-       filename = f'{folder}/gm_{region_code}_{band}_{year}.tif'
+       filename = f'{folder}/gm_{product}_{region_code}_{band}.tif'
        on_disk = str(root / filename)
        write_cog(gm[band], on_disk, overwrite=True)
        if upload:
            s3_client.upload_file(on_disk, s3_bucket, f"{s3_prefix}/{filename}")
 
-    filename = f"{folder}/{region_code}_{year}.completed"
+    filename = f"{folder}/gm_{product}_{region_code}.completed"
     on_disk = str(root / filename)
     with open(on_disk, "w") as fl:
         print("done!", file=fl)
@@ -209,7 +194,7 @@ def write_geomedian(gm, region_code, upload=True):
 def check_exists(region_code):
     s3_client = boto3.client('s3')
     folder = f"usgs_ls_gm/{region_code}"
-    filename = f"{folder}/{region_code}_{year}.completed"
+    filename = f"{folder}/gm_{product}_{region_code}.completed"
     try:
         s3_client.head_object(Bucket=s3_bucket, Key=f"{s3_prefix}/{filename}")
         return True
@@ -235,13 +220,9 @@ def execute_task(region_code):
 
 def main():
     tasks_list = read_tasks_list()
-    priority_region_code = "x45y17"
 
     while tasks_list != []:
-        if priority_region_code not in tasks_list:
-            region_code = random.choice(tasks_list)
-        else:
-            region_code = priority_region_code
+        region_code = random.choice(tasks_list)
 
         if not check_exists(region_code):
             execute_task(region_code)
