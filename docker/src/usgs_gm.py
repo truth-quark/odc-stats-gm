@@ -28,8 +28,8 @@ output_crs = "EPSG:3577"
 measurements = ['coastal', 'blue', 'green', 'red', 'nir08', 'swir16', 'swir22']
 masking_band = "qa_pixel"
 
-s3_bucket = "imam-dev-bucket"
-s3_prefix = "usgs-gm/geomad"
+s3_bucket = "dea-dme-dev"
+s3_prefix = "products/solomons/geomad"
 
 
 def log(*args, **kwargs):
@@ -57,7 +57,7 @@ def rewrite_asset_urls(in_url):
 
 
 def find_feature(region_code):
-    with open("/src/nsw_tiles.geojson") as fl:
+    with open("/src/gm_polygons.geojson") as fl:
         data = json.load(fl)
 
     features = data['features']
