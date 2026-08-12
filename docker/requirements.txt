@@ -1,26 +1,18 @@
 --extra-index-url https://packages.dea.ga.gov.au/
---find-links="https://packages.dea.ga.gov.au/fc"
 
 # For ML
-ai-edge-litert
-datacube-ows>=1.9
-datacube[performance,s3]>=1.9.5
-eodatasets3>1.9
+datacube[performance,s3]==1.9.9
+eodatasets3==1.9.3
 hdstats==0.1.8.post1
 numexpr>=2.11
-odc-algo>=1.0.1 #,<1.1 # Don't want geomad yet
+odc-algo==1.1.1 #,<1.1 # Don't want geomad yet
 odc-apps-cloud>=0.2.2
-wofs
-fractional_cover
 
 # For testing
 odc-apps-dc-tools>=0.2.12
-odc-cloud>=0.2.5
-odc-dscache>=1.9
-odc-geo>=0.5.0rc1
-odc-stac>=0.4.0
-pudb
+odc-cloud==0.2.5
+odc-geo==0.5.0rc1
+odc-stac==0.4.0
 
 # odc-stac is in PyPI
-odc-stats[ows]
-tl2cgen
+odc-stats[ows]==1.9.6

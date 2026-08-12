@@ -23,7 +23,7 @@ COPY --from=stats-conda /env /env
 COPY distributed.yaml  /etc/dask/
 
 ENV GDAL_DRIVER_PATH=/env/lib/gdalplugins \ 
-    PROJ_LIB=/env/share/proj \
+    PROJ_DATA=/env/share/proj \
     GDAL_DATA=/env/share/gdal \
     PATH=/env/bin:$PATH
 
@@ -31,4 +31,4 @@ RUN mkdir -p /output
 COPY src/ /src/
 WORKDIR /src
 
-RUN odc-stats --version 
+RUN odc-stats --version
