@@ -195,6 +195,7 @@ def write_geomedian(gm, region_code, upload=True):
 
     filename = f"{folder}/gm_{product}_{region_code}.completed"
     on_disk = str(root / filename)
+
     with open(on_disk, "w") as fl:
         print("done!", file=fl)
     if upload:
@@ -230,6 +231,7 @@ def execute_task(region_code, meta: TaskMetaData):
     log('done', datetime.now())
 
 
+# TODO: push to baseline job funcs later
 def main():
     # TODO: gather date strings & job specific params here as needed
     meta = TaskMetaData(
@@ -243,6 +245,9 @@ def main():
     while tasks_list != []:
         region_code = random.choice(tasks_list)
 
+        # check_exists() needs S3, which is sort of needed for `.completed` files
+        # modifying it to skip S3 allows processing to continue to a point where
+        # IAM is needed
         if not check_exists(region_code):
             execute_task(region_code, meta)
         else:
