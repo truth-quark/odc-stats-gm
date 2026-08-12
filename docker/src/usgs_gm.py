@@ -175,7 +175,7 @@ def write_input_data(ds):
             write_cog(ds[band].isel(time=i).compute(), f'/output/{band}_{time}_{i}.tif', overwrite=True)
 
 
-def write_geomedian(gm, region_code, upload=True):
+def write_geomedian(gm, region_code, upload=False):
     if upload:
         s3_client = boto3.client('s3')
     else:
@@ -201,6 +201,8 @@ def write_geomedian(gm, region_code, upload=True):
 
 
 def check_exists(region_code):
+    return False
+
     s3_client = boto3.client('s3')
     folder = f"usgs_ls_gm/{region_code}"
     filename = f"{folder}/gm_{product}_{region_code}.completed"
@@ -221,6 +223,8 @@ def execute_task(region_code, meta: TaskMetaData):
     items = search(bbox, meta)
     log('loading', datetime.now())
     ds = load(items, bbox)
+    # log('writing input', datetime.now())
+    # write_input_data(ds)
     log('geomedian', datetime.now())
     gm = assign_crs(xr_geomedian(ds, num_threads=multiprocessing.cpu_count()), crs=output_crs)
     log('writing', datetime.now())
@@ -232,8 +236,8 @@ def execute_task(region_code, meta: TaskMetaData):
 def main():
     # TODO: gather date strings & job specific params here as needed
     meta = TaskMetaData(
-        start_date="2023-01-01",
-        end_date="2023-12-31"
+        start_date="2026-01-01",
+        end_date="2026-02-01"
     )
 
     tasks_list = read_tasks_list()

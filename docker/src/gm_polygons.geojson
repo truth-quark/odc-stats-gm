@@ -5,7 +5,7 @@
             "geometry": {
                 "type": "Polygon",
                 "_comment": "Source for coordinate data https://gist.githubusercontent.com/brunosan/9800909/raw/fe586ae06700bc2ab31eb423a8c7d65738fc6955/wrs2_descending.geojson",
-                "coordinates": [
+                "coordinates": [[
                     [
                         161.03278884721826,
                         -11.005069336176083
@@ -42,7 +42,7 @@
                         161.03278884721826,
                         -11.005069336176083
                     ]
-                ]
+                ]]
             },
             "type": "Feature",
             "properties": {
