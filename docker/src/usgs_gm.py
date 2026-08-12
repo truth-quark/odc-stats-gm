@@ -176,7 +176,7 @@ def write_input_data(ds):
             write_cog(ds[band].isel(time=i).compute(), f'/output/{band}_{time}_{i}.tif', overwrite=True)
 
 
-def write_geomedian(gm, region_code, upload=True):
+def write_geomedian(gm, region_code, upload=False):
     if upload:
         s3_client = boto3.client('s3')
     else:
