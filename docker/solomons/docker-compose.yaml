@@ -1,0 +1,14 @@
+services:
+  usgsgm:
+    image: usgs-gm:latest
+    command: ["sleep", "infinity"]
+    environment:
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_SESION_TOKEN
+    volumes:
+      - ./output:/output
+      - type: bind
+        source: ./src
+        target: /src
+        read_only: true
