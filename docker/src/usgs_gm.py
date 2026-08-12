@@ -234,7 +234,7 @@ def main():
     # TODO: gather date strings & job specific params here as needed
     meta = TaskMetaData(
         start_date="2023-01-01",
-        end_date="2023-12-31"
+        end_date="2023-02-01",
         do_s3_upload=False
     )
 
