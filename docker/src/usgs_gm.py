@@ -6,6 +6,7 @@ import json
 import multiprocessing
 from pathlib import Path
 import random
+import typing
 import sys
 
 import boto3
@@ -29,6 +30,16 @@ masking_band = "qa_pixel"
 product = "HY"  # [HY, FY]
 s3_bucket = "dea-dme-dev"
 s3_prefix = "products/solomons/geomad"
+
+
+class TaskMetaData(typing.NamedTuple):
+    """
+    Data storage for query parameters.
+
+    Dates have the form 'YYYY-MM-DD'
+    """
+    start_date: str
+    end_date: str
 
 
 def log(*args, **kwargs):
