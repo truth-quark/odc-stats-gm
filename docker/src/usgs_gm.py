@@ -6,6 +6,7 @@ import json
 import multiprocessing
 from pathlib import Path
 import random
+import typing
 import sys
 
 import boto3
@@ -29,6 +30,16 @@ masking_band = "qa_pixel"
 product = "HY"  # [HY, FY]
 s3_bucket = "dea-dme-dev"
 s3_prefix = "products/solomons/geomad"
+
+
+class TaskMetaData(typing.NamedTuple):
+    """
+    Data storage for query parameters.
+
+    Dates have the form 'YYYY-MM-DD'
+    """
+    start_date: str
+    end_date: str
 
 
 def log(*args, **kwargs):
@@ -84,13 +95,11 @@ def bounds(feature):
     )
 
 
-def search(bbox):
+def search(bbox, meta: TaskMetaData):
     stac_client = Client.open("https://landsatlook.usgs.gov/stac-server")
     l2col = 'landsat-c2l2-sr'
 
-    start_date = f"2023-01-01"
-    end_date = f"2023-12-31"
-    date_query = f"{start_date}/{end_date}"
+    date_query = f"{meta.start_date}/{meta.end_date}"
 
     landsat8 = stac_client.search(
         collections=[l2col],
@@ -202,12 +211,14 @@ def check_exists(region_code):
         return False
 
 
-def execute_task(region_code):
+def execute_task(region_code, meta: TaskMetaData):
     configure_rio(cloud_defaults=True, aws={"requester_pays": True})
 
+    # find_feature is here / reads the GeoJSON
+    # TODO: could rename to extract_feature()
     bbox = bounds(find_feature(region_code))
     log('searching', bbox.bbox, region_code, datetime.now())
-    items = search(bbox)
+    items = search(bbox, meta)
     log('loading', datetime.now())
     ds = load(items, bbox)
     log('geomedian', datetime.now())
@@ -219,13 +230,19 @@ def execute_task(region_code):
 
 
 def main():
+    # TODO: gather date strings & job specific params here as needed
+    meta = TaskMetaData(
+        start_date="2023-01-01",
+        end_date="2023-12-31"
+    )
+
     tasks_list = read_tasks_list()
 
     while tasks_list != []:
         region_code = random.choice(tasks_list)
 
         if not check_exists(region_code):
-            execute_task(region_code)
+            execute_task(region_code, meta)
         else:
             log(region_code, 'already exists!')
 
