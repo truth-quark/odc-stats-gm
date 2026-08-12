@@ -40,6 +40,7 @@ class TaskMetaData(typing.NamedTuple):
     """
     start_date: str
     end_date: str
+    do_s3_upload: bool
 
 
 def log(*args, **kwargs):
@@ -224,7 +225,7 @@ def execute_task(region_code, meta: TaskMetaData):
     log('geomedian', datetime.now())
     gm = assign_crs(xr_geomedian(ds, num_threads=multiprocessing.cpu_count()), crs=output_crs)
     log('writing', datetime.now())
-    write_geomedian(gm, region_code)
+    write_geomedian(gm, region_code, meta.do_s3_upload)
 
     log('done', datetime.now())
 
@@ -234,6 +235,7 @@ def main():
     meta = TaskMetaData(
         start_date="2023-01-01",
         end_date="2023-12-31"
+        do_s3_upload=False
     )
 
     tasks_list = read_tasks_list()
