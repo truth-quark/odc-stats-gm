@@ -1,5 +1,3 @@
-"""Special thanks to Chad Barton for the PoC"""
-
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import json
@@ -27,7 +25,7 @@ output_crs = "EPSG:32757"
 measurements = ['coastal', 'blue', 'green', 'red', 'nir08', 'swir16', 'swir22']
 masking_band = "qa_pixel"
 
-product = "test"
+product = "2026-present"
 s3_bucket = "dea-dme-dev"
 s3_prefix = "products/solomons/geomad"
 
@@ -66,7 +64,7 @@ def rewrite_asset_urls(in_url):
     return s3_prefix + in_url[len(http_prefix):]
 
 
-def find_feature(region_code):
+def extract_feature(region_code):
     with open("/src/gm_polygons.geojson") as fl:
         data = json.load(fl)
 
@@ -163,9 +161,12 @@ def load_optical(items, bbox):
 
 
 def load(items, bbox):
+    log('loading mask', datetime.now())
     mask = load_mask(items, bbox)
+    log('loading bands', datetime.now())
     optical_ds = load_optical(items, bbox)
 
+    log('masking', datetime.now())
     for band in measurements:
         optical_ds[band] = (optical_ds[band].dims, numpy.where(mask, optical_ds[band], numpy.nan))
 
@@ -219,9 +220,7 @@ def check_exists(region_code):
 def execute_task(region_code, meta: TaskMetaData):
     configure_rio(cloud_defaults=True, aws={"requester_pays": True})
 
-    # find_feature is here / reads the GeoJSON
-    # TODO: could rename to extract_feature()
-    bbox = bounds(find_feature(region_code))
+    bbox = bounds(extract_feature(region_code))
     log('searching', bbox.bbox, region_code, datetime.now())
     items = search(bbox, meta)
     log('loading', datetime.now())
@@ -240,7 +239,7 @@ def main():
     # TODO: gather date strings & job specific params here as needed
     meta = TaskMetaData(
         start_date="2026-01-01",
-        end_date="2026-02-01"
+        end_date="2026-12-31"
     )
 
     tasks_list = read_tasks_list()
