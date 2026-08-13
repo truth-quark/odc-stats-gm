@@ -22,12 +22,12 @@ from odc.stac import configure_rio, stac_load
 
 
 query_crs = "EPSG:4326"
-output_crs = "EPSG:3577"   # we probably want the native CRS for Solomons
+output_crs = "EPSG:32757"
 
 measurements = ['coastal', 'blue', 'green', 'red', 'nir08', 'swir16', 'swir22']
 masking_band = "qa_pixel"
 
-product = "HY"  # [HY, FY]
+product = "test"
 s3_bucket = "dea-dme-dev"
 s3_prefix = "products/solomons/geomad"
 
@@ -150,12 +150,15 @@ def load_optical(items, bbox):
             patch_url=rewrite_asset_urls,
         )
 
+    nodata = 65535
     scale = 0.00002750
     offset = -0.200000
     rescale = 10000.0
 
     for band in measurements:
-        optical_ds[band] = ((optical_ds[band] * scale + offset) * rescale)
+        optical_ds[band] = (optical_ds[band].dims, numpy.where(optical_ds[band].data != nodata, optical_ds[band].data, numpy.nan))
+        optical_ds[band] = (optical_ds[band] * scale + offset) * rescale
+        optical_ds[band] = (optical_ds[band].dims, numpy.clip(optical_ds[band], 0, rescale).data)
     return optical_ds
 
 

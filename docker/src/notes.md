@@ -12,4 +12,4 @@
 - make up
 - make bash
 - (/src) python usgs_gm.py
-* NOTE run for 1 month, m7a.8xlarge, 128G RAM, 32 CPUs. 4GB input when COG'd.
+* NOTE run for 1 month, m7a.8xlarge, 128G RAM, 32 CPUs. 4GB input when COG'd. About 12 minutes.
