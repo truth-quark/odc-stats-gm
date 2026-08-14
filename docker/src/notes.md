@@ -13,3 +13,4 @@
 - make bash
 - (/src) python usgs_gm.py
 * NOTE run for 1 month, m7a.8xlarge, 128G RAM, 32 CPUs. 4GB input when COG'd. About 12 minutes.
+* NOTE run for 1 year, r6a.48xlarge, 1.5T RAM, 192 CPUs. About 150 minutes.

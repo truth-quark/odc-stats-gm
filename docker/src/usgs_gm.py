@@ -25,7 +25,7 @@ output_crs = "EPSG:32757"
 measurements = ['coastal', 'blue', 'green', 'red', 'nir08', 'swir16', 'swir22']
 masking_band = "qa_pixel"
 
-product = "2026-present"
+product = "2025-07-present"
 s3_bucket = "dea-dme-dev"
 s3_prefix = "products/solomons/geomad"
 
@@ -238,7 +238,7 @@ def execute_task(region_code, meta: TaskMetaData):
 def main():
     # TODO: gather date strings & job specific params here as needed
     meta = TaskMetaData(
-        start_date="2026-01-01",
+        start_date="2025-07-01",
         end_date="2026-12-31"
     )
 
