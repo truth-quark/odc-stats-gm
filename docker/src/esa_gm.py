@@ -268,7 +268,7 @@ def execute_task(region_code, meta: TaskMetaData):
 
 
 def main():
-    meta = TaskMetaData(start_date="2026-01-01", end_date="2026-01-31")
+    meta = TaskMetaData(start_date="2026-01-01", end_date="2026-12-31")
 
     tasks_list = read_tasks_list()
 

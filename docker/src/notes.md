@@ -12,5 +12,9 @@
 - make up
 - make bash
 - (/src) python usgs_gm.py
-* NOTE run for 1 month, m7a.8xlarge, 128G RAM, 32 CPUs. 4GB input when COG'd. About 12 minutes.
-* NOTE run for 1 year, r6a.48xlarge, 1.5T RAM, 192 CPUs. About 150 minutes.
+* NOTE LS: run for 1 month, m7a.8xlarge, 128G RAM, 32 CPUs. 4GB input when COG'd. About 12 minutes.
+* NOTE LS: run for 1 year, r6a.48xlarge, 1.5T RAM, 192 CPUs. About 150 minutes.
+* NOTE S2 more pixels: run for 1 month, m7a.8xlarge, 128G RAM, 32 CPUs. about 50% MEM usage. About 1 hour.
+* NOTE S2 cleaner: run for 1 month, m7a.8xlarge, 128G RAM, 32 CPUs. about 50% MEM usage. About 40 minutes.
+* NOTE S2 cleaner: run for 6 months, r6a.48xlarge, 1.5T RAM, 192 CPUs. about 30% MEM usage. About 80 minutes.
+* NOTE S2 cleaner: run for 6 months, r6a.48xlarge, 1.5T RAM, 192 CPUs. about 30% MEM usage. About 100 minutes.
