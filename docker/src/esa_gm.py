@@ -48,12 +48,12 @@ s2_bands = [
     "thumbnail",
 ]
 
-measurements = ["blue", "green", "red"]
+measurements = ["blue", "green", "red", "nir"]
 masking_band = "scl"
-resolution = 20  # 10?
+resolution = 10
 
 
-product = "2026-present"
+product = "test"
 s3_bucket = "dea-dme-dev"
 s3_prefix = "products/solomons/geomad"
 
@@ -144,10 +144,7 @@ def load_mask(items, bbox):
     # 3: cloud shadow, 4: vegetation, 5: not-vegetated
     # 6: water, 7: unclassified, 8: cloud (medium)
     # 9: cloud (high), 10: cirrus, 11: snow
-    return ~masking_data.isin([0, 1, 2, 3, 9])
-
-    # much cleaner but fewer pixels
-    # return ~masking_data.isin([0, 1, 2, 3, 8, 9, 10])
+    return ~masking_data.isin([0, 1, 2, 3, 8, 9, 10])
 
 
 def load_optical(items, bbox):
@@ -235,8 +232,6 @@ def write_geomedian(gm, region_code, upload=False):
 
 
 def check_exists(region_code):
-    return False
-
     s3_client = boto3.client("s3")
     folder = f"esa_s2_gm/{region_code}"
     filename = f"{folder}/gm_{product}_{region_code}.completed"
@@ -268,7 +263,7 @@ def execute_task(region_code, meta: TaskMetaData):
 
 
 def main():
-    meta = TaskMetaData(start_date="2026-01-01", end_date="2026-12-31")
+    meta = TaskMetaData(start_date="2026-01-01", end_date="2026-02-01")
 
     tasks_list = read_tasks_list()
 
