@@ -206,7 +206,7 @@ def write_input_data(ds):
             )
 
 
-def write_geomedian(gm, region_code, upload=False):
+def write_geomedian(gm, region_code, upload=True):
     if upload:
         s3_client = boto3.client("s3")
     else:

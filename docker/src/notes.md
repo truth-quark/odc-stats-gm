@@ -18,3 +18,7 @@
 * NOTE S2 cleaner: run for 1 month, m7a.8xlarge, 128G RAM, 32 CPUs. about 50% MEM usage. About 40 minutes.
 * NOTE S2 cleaner: run for 6 months, r6a.48xlarge, 1.5T RAM, 192 CPUs. about 30% MEM usage. About 80 minutes.
 * NOTE S2 cleaner: run for 6 months, r6a.48xlarge, 1.5T RAM, 192 CPUs. about 30% MEM usage. About 100 minutes.
+
+10m 4 bands
+* NOTE S2 cleaner: run for 1 month, m7a.8xlarge, 128G RAM, 32 CPUs. Killed.
+* NOTE S2 cleaner: run for 1 month, r6a.48xlarge, 1.5T RAM, 192 CPUs. mem at 20%. not good. 33 minutes. $USD 6.50
