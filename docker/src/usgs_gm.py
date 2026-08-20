@@ -63,6 +63,7 @@ def rewrite_asset_urls(in_url):
 
     if not in_url.startswith(http_prefix):
         return in_url
+
     return s3_prefix + in_url[len(http_prefix):]
 
 
@@ -172,7 +173,11 @@ def load(items, bbox):
 def write_input_data(ds):
     for i, time in enumerate(numpy.datetime_as_string(ds["time"].data)):
         for band in measurements:
-            write_cog(ds[band].isel(time=i).compute(), f'/output/{band}_{time}_{i}.tif', overwrite=True)
+            write_cog(
+                ds[band].isel(time=i).compute(),
+                f"/output/{band}_{time}_{i}.tif",
+                overwrite=True,
+            )
 
 
 def write_geomedian(gm, region_code, upload=False):
@@ -186,11 +191,11 @@ def write_geomedian(gm, region_code, upload=False):
     (root / folder).mkdir(parents=True, exist_ok=True)
 
     for band in measurements:
-       filename = f'{folder}/gm_{product}_{region_code}_{band}.tif'
-       on_disk = str(root / filename)
-       write_cog(gm[band], on_disk, overwrite=True)
-       if upload:
-           s3_client.upload_file(on_disk, s3_bucket, f"{s3_prefix}/{filename}")
+        filename = f"{folder}/gm_{product}_{region_code}_{band}.tif"
+        on_disk = str(root / filename)
+        write_cog(gm[band], on_disk, overwrite=True)
+        if upload:
+            s3_client.upload_file(on_disk, s3_bucket, f"{s3_prefix}/{filename}")
 
     filename = f"{folder}/gm_{product}_{region_code}.completed"
     on_disk = str(root / filename)
@@ -205,6 +210,7 @@ def check_exists(region_code):
     s3_client = boto3.client("s3")
     folder = f"usgs_ls_gm/{region_code}"
     filename = f"{folder}/gm_{product}_{region_code}.completed"
+
     try:
         s3_client.head_object(Bucket=s3_bucket, Key=f"{s3_prefix}/{filename}")
         return True
@@ -223,7 +229,10 @@ def execute_task(region_code, meta: TaskMetaData):
     log("loading", datetime.now())
     ds = load(items, bbox)
     log("geomedian", datetime.now())
-    gm = assign_crs(xr_geomedian(ds, num_threads=multiprocessing.cpu_count()), crs=output_crs)
+
+    gm = assign_crs(
+        xr_geomedian(ds, num_threads=multiprocessing.cpu_count()), crs=output_crs
+    )
     log("writing", datetime.now())
     write_geomedian(gm, region_code, meta.do_s3_upload)
 
