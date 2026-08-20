@@ -1,5 +1,3 @@
-"""Special thanks to Chad Barton for the PoC"""
-
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import json
@@ -24,7 +22,7 @@ from odc.stac import configure_rio, stac_load
 query_crs = "EPSG:4326"
 output_crs = "EPSG:3577"   # we probably want the native CRS for Solomons
 
-measurements = ['coastal', 'blue', 'green', 'red', 'nir08', 'swir16', 'swir22']
+measurements = ["coastal", "blue", "green", "red", "nir08", "swir16", "swir22"]
 masking_band = "qa_pixel"
 
 product = "HY"  # [HY, FY]
@@ -60,8 +58,9 @@ def write_tasks_list(tasks_list):
 
 
 def rewrite_asset_urls(in_url):
-    http_prefix = 'https://landsatlook.usgs.gov/data/'
-    s3_prefix = 's3://usgs-landsat/'
+    http_prefix = "https://landsatlook.usgs.gov/data/"
+    s3_prefix = "s3://usgs-landsat/"
+
     if not in_url.startswith(http_prefix):
         return in_url
     return s3_prefix + in_url[len(http_prefix):]
@@ -71,19 +70,19 @@ def find_feature(region_code):
     with open("/src/gm_polygons.geojson") as fl:
         data = json.load(fl)
 
-    features = data['features']
+    features = data["features"]
 
     for feature in features:
-        if feature['properties']['region_code'] == region_code:
+        if feature["properties"]["region_code"] == region_code:
             return feature
 
     raise ValueError(f"region not found: {region_code}")
 
 
 def bounds(feature):
-    geom = feature['geometry']
-    assert geom['type'] == "Polygon"
-    coords = geom['coordinates']
+    geom = feature["geometry"]
+    assert geom["type"] == "Polygon"
+    coords = geom["coordinates"]
     assert len(coords) == 1
     points = coords[0]
     lons = [p[0] for p in points]
@@ -98,7 +97,7 @@ def bounds(feature):
 
 def search(bbox, meta: TaskMetaData):
     stac_client = Client.open("https://landsatlook.usgs.gov/stac-server")
-    l2col = 'landsat-c2l2-sr'
+    l2col = "landsat-c2l2-sr"
 
     date_query = f"{meta.start_date}/{meta.end_date}"
 
@@ -116,7 +115,7 @@ def search(bbox, meta: TaskMetaData):
         query={"platform": {"eq": "LANDSAT_9"}}
     ).item_collection().items
 
-    return ItemCollection(sorted(landsat8 + landsat9, key=lambda item: item.properties['datetime']))
+    return ItemCollection(sorted(landsat8 + landsat9, key=lambda item: item.properties["datetime"]))
 
 
 def load_mask(items, bbox):
@@ -171,14 +170,14 @@ def load(items, bbox):
 
 
 def write_input_data(ds):
-    for i, time in enumerate(numpy.datetime_as_string(ds['time'].data)):
+    for i, time in enumerate(numpy.datetime_as_string(ds["time"].data)):
         for band in measurements:
             write_cog(ds[band].isel(time=i).compute(), f'/output/{band}_{time}_{i}.tif', overwrite=True)
 
 
 def write_geomedian(gm, region_code, upload=False):
     if upload:
-        s3_client = boto3.client('s3')
+        s3_client = boto3.client("s3")
     else:
         s3_client = None
 
@@ -203,7 +202,7 @@ def write_geomedian(gm, region_code, upload=False):
 
 
 def check_exists(region_code):
-    s3_client = boto3.client('s3')
+    s3_client = boto3.client("s3")
     folder = f"usgs_ls_gm/{region_code}"
     filename = f"{folder}/gm_{product}_{region_code}.completed"
     try:
@@ -221,11 +220,11 @@ def execute_task(region_code, meta: TaskMetaData):
     bbox = bounds(find_feature(region_code))
     log('searching', bbox.bbox, region_code, datetime.now())
     items = search(bbox, meta)
-    log('loading', datetime.now())
+    log("loading", datetime.now())
     ds = load(items, bbox)
-    log('geomedian', datetime.now())
+    log("geomedian", datetime.now())
     gm = assign_crs(xr_geomedian(ds, num_threads=multiprocessing.cpu_count()), crs=output_crs)
-    log('writing', datetime.now())
+    log("writing", datetime.now())
     write_geomedian(gm, region_code, meta.do_s3_upload)
 
     log('done', datetime.now())
@@ -256,5 +255,7 @@ def main():
         tasks_list.remove(region_code)
         write_tasks_list(tasks_list)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
+
