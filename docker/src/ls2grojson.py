@@ -1,7 +1,17 @@
+"""
+Quick & dirty tool to extract GeoJSON geometry content from a local copy of:
+https://gist.githubusercontent.com/brunosan/9800909/raw/fe586ae06700bc2ab31eb423a8c7d65738fc6955/wrs2_descending.geojson
+
+Given the path & 1+ Landsat path/row codes, this extracts the relevant feature
+for pasting into the feature list to process.
+"""
+
 import os
 import sys
 import copy
 import json
+
+USAGE = "USAGE: ls2geojson <wrs2-descending-path-file> region-codes ..."
 
 
 def extract_feature(region_code, path, row, features):
@@ -44,13 +54,11 @@ def main(wrs2, region_codes):
 
 
 if __name__ == "__main__":
-    # USAGE:
-    # ls2geojson <wrs2-descending-path> region-codes ...
-
     wrs2_path = sys.argv[1]
     raw_region_codes = sys.argv[2:]
 
-    assert os.path.exists(wrs2_path)
+    assert os.path.exists(wrs2_path), USAGE
+    assert raw_region_codes, USAGE
 
     with open(wrs2_path) as wf:
         wrs2_geojson = json.load(wf)
