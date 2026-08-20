@@ -221,6 +221,8 @@ def check_exists(region_code):
 def execute_task(region_code, meta: TaskMetaData):
     configure_rio(cloud_defaults=True, aws={"requester_pays": True})
 
+    start_time = datetime.now()
+
     bbox = bounds(extract_feature(region_code))
     log("searching", bbox.bbox, region_code, datetime.now())
     items = search(bbox, meta)
@@ -234,7 +236,12 @@ def execute_task(region_code, meta: TaskMetaData):
     log("writing", datetime.now())
     write_geomedian(gm, region_code, meta.do_s3_upload)
 
-    log('done', datetime.now())
+    end_time = datetime.now()
+    t_delta = end_time - start_time
+    elapsed_hours = t_delta.total_seconds() / 3600.0
+
+    log(f"elapsed time for {region_code}", elapsed_hours)
+    log("done", end_time)
 
 
 # TODO: push to baseline job funcs later
