@@ -1,4 +1,3 @@
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import json
 import multiprocessing
@@ -9,6 +8,8 @@ import sys
 
 import boto3
 import botocore
+from dask import array as da
+import dask.distributed
 import numpy
 from pystac_client import Client
 from pystac import ItemCollection
@@ -16,6 +17,7 @@ from pystac import ItemCollection
 from odc.algo import xr_geomedian
 from odc.geo import BoundingBox
 from odc.geo.xr import write_cog, assign_crs
+from odc.io.cgroups import get_cpu_quota
 from odc.stac import configure_rio, stac_load
 
 
@@ -56,6 +58,8 @@ resolution = 10
 product = "test"
 s3_bucket = "dea-dme-dev"
 s3_prefix = "products/solomons/geomad"
+
+chunks = {"x": 1000, "y": 1000}
 
 
 class TaskMetaData(typing.NamedTuple):
@@ -126,17 +130,16 @@ def search(bbox, meta: TaskMetaData):
 
 
 def load_mask(items, bbox):
-    with ThreadPoolExecutor() as pool:
-        mask_ds = stac_load(
-            items=items,
-            bands=[masking_band],
-            crs=output_crs,
-            resolution=resolution,
-            bbox=bbox,
-            resampling="nearest",
-            dtype="int16",
-            pool=pool,
-        )
+    mask_ds = stac_load(
+        items=items,
+        bands=[masking_band],
+        crs=output_crs,
+        resolution=resolution,
+        bbox=bbox,
+        resampling="nearest",
+        dtype="int16",
+        chunks=chunks,
+    )
 
     masking_data = mask_ds[masking_band]
 
@@ -144,21 +147,20 @@ def load_mask(items, bbox):
     # 3: cloud shadow, 4: vegetation, 5: not-vegetated
     # 6: water, 7: unclassified, 8: cloud (medium)
     # 9: cloud (high), 10: cirrus, 11: snow
-    return ~masking_data.isin([0, 1, 2, 3, 8, 9, 10])
+    return (~masking_data.isin([0, 1, 2, 3, 8, 9, 10]))
 
 
 def load_optical(items, bbox):
-    with ThreadPoolExecutor() as pool:
-        optical_ds = stac_load(
-            items=items,
-            bands=measurements,
-            crs=output_crs,
-            resolution=resolution,
-            bbox=bbox,
-            resampling="average",
-            dtype="float32",
-            pool=pool,
-        )
+    optical_ds = stac_load(
+        items=items,
+        bands=measurements,
+        crs=output_crs,
+        resolution=resolution,
+        bbox=bbox,
+        resampling="average",
+        dtype="float32",
+        chunks=chunks,
+    )
 
     nodata = 0
     scale = 0.0001
@@ -168,15 +170,10 @@ def load_optical(items, bbox):
     for band in measurements:
         optical_ds[band] = (
             optical_ds[band].dims,
-            numpy.where(
-                optical_ds[band].data != nodata, optical_ds[band].data, numpy.nan
-            ),
+            da.where(optical_ds[band].data != nodata, optical_ds[band].data, numpy.nan),
         )
         optical_ds[band] = (optical_ds[band] * scale + offset) * rescale
-        optical_ds[band] = (
-            optical_ds[band].dims,
-            numpy.clip(optical_ds[band], 0, rescale).data,
-        )
+        optical_ds[band] = optical_ds[band].clip(0, rescale)
     return optical_ds
 
 
@@ -190,7 +187,7 @@ def load(items, bbox):
     for band in measurements:
         optical_ds[band] = (
             optical_ds[band].dims,
-            numpy.where(mask, optical_ds[band], numpy.nan),
+            da.where(mask, optical_ds[band], numpy.nan),
         )
 
     return optical_ds
@@ -242,8 +239,18 @@ def check_exists(region_code):
         return False
 
 
+def setup_dask_with_rio():
+    ncpus = get_cpu_quota()
+    dask_client = dask.distributed.Client(
+        processes=False, n_workers=1, threads_per_worker=ncpus
+    )
+    configure_rio(cloud_defaults=True, client=dask_client)
+    return dask_client
+
+
 def execute_task(region_code, meta: TaskMetaData):
-    configure_rio(cloud_defaults=True)
+    dask_client = setup_dask_with_rio()
+    log("client cores", dask_client.ncores())
 
     bbox = bounds(extract_feature(region_code))
     log("searching", bbox.bbox, region_code, datetime.now())
@@ -253,13 +260,12 @@ def execute_task(region_code, meta: TaskMetaData):
     # log('writing input', datetime.now())
     # write_input_data(ds)
     log("geomedian", datetime.now())
-    gm = assign_crs(
-        xr_geomedian(ds, num_threads=multiprocessing.cpu_count()), crs=output_crs
-    )
+    gm = assign_crs(xr_geomedian(ds).load(), crs=output_crs)
     log("writing", datetime.now())
     write_geomedian(gm, region_code)
 
     log("done", datetime.now())
+    dask_client.shutdown()
 
 
 def main():
