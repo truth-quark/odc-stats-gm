@@ -1,3 +1,4 @@
+import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import json
@@ -253,6 +254,13 @@ def main():
         end_date="2026-12-31",
         do_s3_upload=False
     )
+
+    # Fail fast if AWS not configured for S3 uploads
+    if meta.do_s3_upload:
+        for k in ("AWS_ACCESS_KEY_ID",
+                  "AWS_SECRET_ACCESS_KEY",
+                  "AWS_SESSION_TOKEN"):
+            assert k in os.environ
 
     tasks_list = read_tasks_list()
 
