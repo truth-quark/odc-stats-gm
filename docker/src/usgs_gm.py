@@ -20,7 +20,7 @@ from odc.stac import configure_rio, stac_load
 
 
 query_crs = "EPSG:4326"
-output_crs = "EPSG:3577"   # we probably want the native CRS for Solomons
+output_crs = "EPSG:32757"
 
 measurements = ["coastal", "blue", "green", "red", "nir08", "swir16", "swir22"]
 masking_band = "qa_pixel"
