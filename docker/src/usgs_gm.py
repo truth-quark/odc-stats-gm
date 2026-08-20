@@ -242,6 +242,7 @@ def execute_task(region_code, meta: TaskMetaData):
 
     log(f"elapsed time for {region_code}", elapsed_hours)
     log("done", end_time)
+    log("")  # space out results between region codes
 
 
 # TODO: push to baseline job funcs later
