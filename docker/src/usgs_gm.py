@@ -222,7 +222,7 @@ def execute_task(region_code, meta: TaskMetaData):
     configure_rio(cloud_defaults=True, aws={"requester_pays": True})
 
     bbox = bounds(extract_feature(region_code))
-    log('searching', bbox.bbox, region_code, datetime.now())
+    log("searching", bbox.bbox, region_code, datetime.now())
     items = search(bbox, meta)
     log("loading", datetime.now())
     ds = load(items, bbox)
@@ -241,8 +241,8 @@ def execute_task(region_code, meta: TaskMetaData):
 def main():
     # TODO: gather date strings & job specific params here as needed
     meta = TaskMetaData(
-        start_date="2023-01-01",
-        end_date="2023-02-01",
+        start_date="2026-01-01",
+        end_date="2026-12-31",
         do_s3_upload=False
     )
 
