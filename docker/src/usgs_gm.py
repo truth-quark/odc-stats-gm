@@ -25,9 +25,9 @@ output_crs = "EPSG:32757"
 measurements = ["coastal", "blue", "green", "red", "nir08", "swir16", "swir22"]
 masking_band = "qa_pixel"
 
-product = "HY"  # [HY, FY]
+product = "TODO"  # [HY, FY, or use date strings?]
 s3_bucket = "dea-dme-dev"
-s3_prefix = "products/solomons/geomad"
+s3_prefix = None  # "products/solomons/geomad"  # BREAK this by default
 
 
 class TaskMetaData(typing.NamedTuple):
