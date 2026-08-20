@@ -67,7 +67,7 @@ def rewrite_asset_urls(in_url):
     return s3_prefix + in_url[len(http_prefix):]
 
 
-def find_feature(region_code):
+def extract_feature(region_code):
     with open("/src/gm_polygons.geojson") as fl:
         data = json.load(fl)
 
@@ -221,9 +221,7 @@ def check_exists(region_code):
 def execute_task(region_code, meta: TaskMetaData):
     configure_rio(cloud_defaults=True, aws={"requester_pays": True})
 
-    # find_feature is here / reads the GeoJSON
-    # TODO: could rename to extract_feature()
-    bbox = bounds(find_feature(region_code))
+    bbox = bounds(extract_feature(region_code))
     log('searching', bbox.bbox, region_code, datetime.now())
     items = search(bbox, meta)
     log("loading", datetime.now())
