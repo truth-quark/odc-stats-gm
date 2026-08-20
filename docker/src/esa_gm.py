@@ -9,7 +9,6 @@ import sys
 import boto3
 import botocore
 from dask import array as da
-import dask.distributed
 import numpy
 from pystac_client import Client
 from pystac import ItemCollection
@@ -59,7 +58,7 @@ product = "test"
 s3_bucket = "dea-dme-dev"
 s3_prefix = "products/solomons/geomad"
 
-chunks = {"x": 1000, "y": 1000}
+chunks = {"x": 500, "y": 500}
 
 
 class TaskMetaData(typing.NamedTuple):
@@ -239,18 +238,9 @@ def check_exists(region_code):
         return False
 
 
-def setup_dask_with_rio():
-    ncpus = get_cpu_quota()
-    dask_client = dask.distributed.Client(
-        processes=False, n_workers=1, threads_per_worker=ncpus
-    )
-    configure_rio(cloud_defaults=True, client=dask_client)
-    return dask_client
-
-
 def execute_task(region_code, meta: TaskMetaData):
-    dask_client = setup_dask_with_rio()
-    log("client cores", dask_client.ncores())
+    ncpus = get_cpu_quota()
+    configure_rio(cloud_defaults=True)
 
     bbox = bounds(extract_feature(region_code))
     log("searching", bbox.bbox, region_code, datetime.now())
@@ -260,12 +250,11 @@ def execute_task(region_code, meta: TaskMetaData):
     # log('writing input', datetime.now())
     # write_input_data(ds)
     log("geomedian", datetime.now())
-    gm = assign_crs(xr_geomedian(ds).load(), crs=output_crs)
+    gm = assign_crs(xr_geomedian(ds, num_threads=1).load(scheduler="threads"), crs=output_crs)
     log("writing", datetime.now())
     write_geomedian(gm, region_code)
 
     log("done", datetime.now())
-    dask_client.shutdown()
 
 
 def main():
