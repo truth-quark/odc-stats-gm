@@ -28,7 +28,7 @@ masking_band = "qa_pixel"
 
 product = "TODO"  # [HY, FY, or use date strings?]
 s3_bucket = "dea-dme-dev"
-s3_prefix = None  # "products/solomons/geomad"  # BREAK this by default
+s3_prefix = "data_investigation/geomedian/landsat"
 
 
 class TaskMetaData(typing.NamedTuple):
