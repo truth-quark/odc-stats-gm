@@ -21,3 +21,6 @@
 * NOTE S2 10m 4 bands: run for 1 month, m7a.8xlarge, 128G RAM, 32 CPUs. Killed.
 * NOTE S2 10m 4 bands: run for 1 month, r6a.48xlarge, 1.5T RAM, 192 CPUs. mem at 20%. not good. 33 minutes. $USD 6.50
 * NOTE S2 10m 4 bands: 1 month, m7a.16xlarge, 64 CPUs, 256G RAM. 50 minutes. $USD 4.63, (500,500) chunks, about 70% mem
+* NOTE S2 10m 4 bands: 6 month, r6a.16xlarge, 64 CPUs, 512G RAM. (200,200) chunks, so far 40% mem
+
+* NOTE IMPORTANT run assume first before attempting

@@ -54,11 +54,11 @@ masking_band = "scl"
 resolution = 10
 
 
-product = "test"
+product = "2026-present"
 s3_bucket = "dea-dme-dev"
 s3_prefix = "products/solomons/geomad"
 
-chunks = {"x": 500, "y": 500}
+chunks = {"x": 200, "y": 200}
 
 
 class TaskMetaData(typing.NamedTuple):
@@ -138,6 +138,7 @@ def load_mask(items, bbox):
         resampling="nearest",
         dtype="int16",
         chunks=chunks,
+        fail_on_error=False,
     )
 
     masking_data = mask_ds[masking_band]
@@ -159,6 +160,7 @@ def load_optical(items, bbox):
         resampling="average",
         dtype="float32",
         chunks=chunks,
+        fail_on_error=False,
     )
 
     nodata = 0
@@ -202,7 +204,7 @@ def write_input_data(ds):
             )
 
 
-def write_geomedian(gm, region_code, upload=True):
+def write_geomedian(gm, region_code, upload=False):
     if upload:
         s3_client = boto3.client("s3")
     else:
@@ -258,7 +260,7 @@ def execute_task(region_code, meta: TaskMetaData):
 
 
 def main():
-    meta = TaskMetaData(start_date="2026-01-01", end_date="2026-02-01")
+    meta = TaskMetaData(start_date="2026-01-01", end_date="2026-12-31")
 
     tasks_list = read_tasks_list()
 
