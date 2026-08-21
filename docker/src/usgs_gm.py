@@ -241,7 +241,7 @@ def execute_task(region_code, meta: TaskMetaData):
     t_delta = end_time - start_time
     elapsed_hours = t_delta.total_seconds() / 3600.0
 
-    log(f"elapsed time for {region_code}", elapsed_hours)
+    log(f"elapsed time for {region_code} {elapsed_hours:.2f} hours")
     log("done", end_time)
     log("")  # space out results between region codes
 
