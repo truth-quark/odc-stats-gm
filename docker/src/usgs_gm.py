@@ -26,7 +26,6 @@ output_crs = "EPSG:32757"
 measurements = ["coastal", "blue", "green", "red", "nir08", "swir16", "swir22"]
 masking_band = "qa_pixel"
 
-s3_bucket = "dea-dme-dev"
 s3_prefix = "data_investigation/geomedian/landsat"
 
 
@@ -39,6 +38,7 @@ class TaskMetaData(typing.NamedTuple):
     start_date: str
     end_date: str
     do_s3_upload: bool
+    s3_bucket: str
     product_code: str
 
 
@@ -194,7 +194,7 @@ def write_geomedian(gm, region_code, meta: TaskMetaData):
         write_cog(gm[band], on_disk, overwrite=True)
 
         if meta.do_s3_upload:
-            s3_client.upload_file(on_disk, s3_bucket, f"{s3_prefix}/{filename}")
+            s3_client.upload_file(on_disk, meta.s3_bucket, f"{s3_prefix}/{filename}")
 
     filename = f"{folder}/gm_{meta.product_code}_{region_code}.completed"
     on_disk = str(root / filename)
@@ -203,10 +203,10 @@ def write_geomedian(gm, region_code, meta: TaskMetaData):
         print("done!", file=fl)
 
     if meta.do_s3_upload:
-        s3_client.upload_file(on_disk, s3_bucket, f"{s3_prefix}/{filename}")
+        s3_client.upload_file(on_disk, meta.s3_bucket, f"{s3_prefix}/{filename}")
 
 
-def check_exists(region_code, product_code):
+def check_exists(region_code, product_code, s3_bucket):
     s3_client = boto3.client("s3")
     folder = f"usgs_ls_gm/{region_code}"
     filename = f"{folder}/gm_{product_code}_{region_code}.completed"
@@ -252,6 +252,7 @@ def main():
         start_date="2026-01-01",
         end_date="2026-12-31",
         do_s3_upload=False,
+        s3_bucket="dea-dme-dev",
 
         # default product code to reduce naming change requirements
         product_code = f"{start_date.replace("-", "")}-{end_date.replace("-", "")}"
@@ -272,7 +273,7 @@ def main():
         # check_exists() needs S3, which is sort of needed for `.completed` files
         # modifying it to skip S3 allows processing to continue to a point where
         # IAM is needed
-        if not check_exists(region_code, meta.product_code):
+        if not check_exists(region_code, meta.product_code. meta.s3_bucket):
             execute_task(region_code, meta)
         else:
             log(region_code, 'already exists!')
