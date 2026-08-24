@@ -182,10 +182,7 @@ def write_input_data(ds):
 
 
 def write_geomedian(gm, region_code, upload=False, product_code=None):
-    if upload:
-        s3_client = boto3.client("s3")
-    else:
-        s3_client = None
+    s3_client = boto3.client("s3") if meta.do_s3_upload else None
 
     root = Path("/output")
     folder = f"usgs_ls_gm/{region_code}"
