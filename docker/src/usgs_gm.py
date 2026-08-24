@@ -193,7 +193,10 @@ def write_geomedian(gm, region_code, meta: TaskMetaData):
         write_cog(gm[band], on_disk, overwrite=True)
 
         if meta.do_s3_upload:
-            s3_client.upload_file(on_disk, meta.s3_bucket, f"{meta.s3_prefix}/{filename}")
+            # TODO: note duplication of paths for s3_filename & check_exists()
+            s3_filename = f"gm_{meta.product_code}_{region_code}_{band}.tif"
+            dest = f"{meta.s3_prefix}/{region_code}/{filename}"
+            s3_client.upload_file(on_disk, meta.s3_bucket, dest)
 
     filename = f"{folder}/gm_{meta.product_code}_{region_code}.completed"
     on_disk = str(root / filename)
@@ -202,7 +205,9 @@ def write_geomedian(gm, region_code, meta: TaskMetaData):
         print("done!", file=fl)
 
     if meta.do_s3_upload:
-        s3_client.upload_file(on_disk, meta.s3_bucket, f"{meta.s3_prefix}/{filename}")
+        s3_filename = f"gm_{meta.product_code}_{region_code}.completed"
+        dest = f"{meta.s3_prefix}/{region_code}/{filename}"
+        s3_client.upload_file(on_disk, meta.s3_bucket, dest)
 
 
 def check_exists(region_code, meta: TaskMetaData):
@@ -210,8 +215,12 @@ def check_exists(region_code, meta: TaskMetaData):
     folder = f"usgs_ls_gm/{region_code}"
     filename = f"{folder}/gm_{meta.product_code}_{region_code}.completed"
 
+    # TODO: note duplication of paths for s3_filename
+
     try:
-        s3_client.head_object(Bucket=meta.s3_bucket, Key=f"{meta.s3_prefix}/{filename}")
+        s3_filename = f"gm_{meta.product_code}_{region_code}.completed"
+        dest = f"{meta.s3_prefix}/{region_code}/{filename}"
+        s3_client.head_object(Bucket=meta.s3_bucket, Key=dest)
         return True
     except botocore.exceptions.ClientError:
         return False
