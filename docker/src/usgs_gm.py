@@ -256,15 +256,18 @@ def execute_task(region_code, meta: TaskMetaData):
 # TODO: push to baseline job funcs later
 def main():
     # TODO: gather date strings & job specific params here as needed
+    start = "2025-07-01"
+    end = "2026-08-20"
+
     meta = TaskMetaData(
-        start_date="2026-01-01",
-        end_date="2026-12-31",
-        do_s3_upload=False,
+        start_date=start,
+        end_date=end,
+        do_s3_upload=True,
         s3_bucket="dea-dme-dev",
         s3_prefix="data_investigation/geomedian/landsat",
 
         # default product code to reduce naming change requirements
-        product_code = f"{start_date.replace("-", "")}-{end_date.replace("-", "")}"
+        product_code = f"""{start.replace("-", "")}-{end.replace("-", "")}"""
     )
 
     # Fail fast if AWS not configured for S3 uploads
