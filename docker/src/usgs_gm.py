@@ -26,7 +26,6 @@ output_crs = "EPSG:32757"
 measurements = ["coastal", "blue", "green", "red", "nir08", "swir16", "swir22"]
 masking_band = "qa_pixel"
 
-product = "TODO"  # [HY, FY, or use date strings?]
 s3_bucket = "dea-dme-dev"
 s3_prefix = "data_investigation/geomedian/landsat"
 
@@ -40,6 +39,7 @@ class TaskMetaData(typing.NamedTuple):
     start_date: str
     end_date: str
     do_s3_upload: bool
+    product_code: str
 
 
 def log(*args, **kwargs):
@@ -181,7 +181,7 @@ def write_input_data(ds):
             )
 
 
-def write_geomedian(gm, region_code, upload=False):
+def write_geomedian(gm, region_code, upload=False, product_code=None):
     if upload:
         s3_client = boto3.client("s3")
     else:
@@ -192,13 +192,13 @@ def write_geomedian(gm, region_code, upload=False):
     (root / folder).mkdir(parents=True, exist_ok=True)
 
     for band in measurements:
-        filename = f"{folder}/gm_{product}_{region_code}_{band}.tif"
+        filename = f"{folder}/gm_{product_code}_{region_code}_{band}.tif"
         on_disk = str(root / filename)
         write_cog(gm[band], on_disk, overwrite=True)
         if upload:
             s3_client.upload_file(on_disk, s3_bucket, f"{s3_prefix}/{filename}")
 
-    filename = f"{folder}/gm_{product}_{region_code}.completed"
+    filename = f"{folder}/gm_{product_code}_{region_code}.completed"
     on_disk = str(root / filename)
 
     with open(on_disk, "w") as fl:
@@ -207,10 +207,10 @@ def write_geomedian(gm, region_code, upload=False):
         s3_client.upload_file(on_disk, s3_bucket, f"{s3_prefix}/{filename}")
 
 
-def check_exists(region_code):
+def check_exists(region_code, product_code):
     s3_client = boto3.client("s3")
     folder = f"usgs_ls_gm/{region_code}"
-    filename = f"{folder}/gm_{product}_{region_code}.completed"
+    filename = f"{folder}/gm_{product_code}_{region_code}.completed"
 
     try:
         s3_client.head_object(Bucket=s3_bucket, Key=f"{s3_prefix}/{filename}")
@@ -235,7 +235,7 @@ def execute_task(region_code, meta: TaskMetaData):
         xr_geomedian(ds, num_threads=multiprocessing.cpu_count()), crs=output_crs
     )
     log("writing", datetime.now())
-    write_geomedian(gm, region_code, meta.do_s3_upload)
+    write_geomedian(gm, region_code, meta.do_s3_upload, meta.product_code)
 
     end_time = datetime.now()
     t_delta = end_time - start_time
@@ -252,7 +252,10 @@ def main():
     meta = TaskMetaData(
         start_date="2026-01-01",
         end_date="2026-12-31",
-        do_s3_upload=False
+        do_s3_upload=False,
+
+        # default product code to reduce naming change requirements
+        product_code = f"{start_date.replace("-", "")}-{end_date.replace("-", "")}"
     )
 
     # Fail fast if AWS not configured for S3 uploads
@@ -270,7 +273,7 @@ def main():
         # check_exists() needs S3, which is sort of needed for `.completed` files
         # modifying it to skip S3 allows processing to continue to a point where
         # IAM is needed
-        if not check_exists(region_code):
+        if not check_exists(region_code, meta.product_code):
             execute_task(region_code, meta)
         else:
             log(region_code, 'already exists!')
