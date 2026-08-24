@@ -181,7 +181,7 @@ def write_input_data(ds):
             )
 
 
-def write_geomedian(gm, region_code, upload=False, product_code=None):
+def write_geomedian(gm, region_code, meta: TaskMetaData):
     s3_client = boto3.client("s3") if meta.do_s3_upload else None
 
     root = Path("/output")
@@ -189,18 +189,20 @@ def write_geomedian(gm, region_code, upload=False, product_code=None):
     (root / folder).mkdir(parents=True, exist_ok=True)
 
     for band in measurements:
-        filename = f"{folder}/gm_{product_code}_{region_code}_{band}.tif"
+        filename = f"{folder}/gm_{meta.product_code}_{region_code}_{band}.tif"
         on_disk = str(root / filename)
         write_cog(gm[band], on_disk, overwrite=True)
-        if upload:
+
+        if meta.do_s3_upload:
             s3_client.upload_file(on_disk, s3_bucket, f"{s3_prefix}/{filename}")
 
-    filename = f"{folder}/gm_{product_code}_{region_code}.completed"
+    filename = f"{folder}/gm_{meta.product_code}_{region_code}.completed"
     on_disk = str(root / filename)
 
     with open(on_disk, "w") as fl:
         print("done!", file=fl)
-    if upload:
+
+    if meta.do_s3_upload:
         s3_client.upload_file(on_disk, s3_bucket, f"{s3_prefix}/{filename}")
 
 
@@ -232,7 +234,7 @@ def execute_task(region_code, meta: TaskMetaData):
         xr_geomedian(ds, num_threads=multiprocessing.cpu_count()), crs=output_crs
     )
     log("writing", datetime.now())
-    write_geomedian(gm, region_code, meta.do_s3_upload, meta.product_code)
+    write_geomedian(gm, region_code, meta)
 
     end_time = datetime.now()
     t_delta = end_time - start_time
