@@ -20,6 +20,17 @@ from odc.io.cgroups import get_cpu_quota
 from odc.stac import configure_rio, stac_load
 
 
+class TaskMetaData(typing.NamedTuple):
+    """
+    Data storage for query parameters.
+
+    Dates have the form 'YYYY-MM-DD'
+    """
+
+    start_date: str
+    end_date: str
+
+
 query_crs = "EPSG:4326"
 output_crs = "EPSG:32757"
 
@@ -54,22 +65,15 @@ masking_band = "scl"
 resolution = 10
 
 
-product = "2026-present"
+product = "2016-present"
 s3_bucket = "dea-dme-dev"
 s3_prefix = "products/solomons/geomad"
 
-chunks = {"x": 200, "y": 200}
+chunks = {"x": 1000, "y": 1000}
+threads_per_chunk = 4
 
 
-class TaskMetaData(typing.NamedTuple):
-    """
-    Data storage for query parameters.
-
-    Dates have the form 'YYYY-MM-DD'
-    """
-
-    start_date: str
-    end_date: str
+meta = TaskMetaData(start_date="2026-01-01", end_date="2026-12-31")
 
 
 def log(*args, **kwargs):
@@ -147,7 +151,7 @@ def load_mask(items, bbox):
     # 3: cloud shadow, 4: vegetation, 5: not-vegetated
     # 6: water, 7: unclassified, 8: cloud (medium)
     # 9: cloud (high), 10: cirrus, 11: snow
-    return (~masking_data.isin([0, 1, 2, 3, 8, 9, 10]))
+    return ~masking_data.isin([0, 1, 2, 3, 8, 9, 10])
 
 
 def load_optical(items, bbox):
@@ -241,7 +245,7 @@ def check_exists(region_code):
 
 
 def execute_task(region_code, meta: TaskMetaData):
-    ncpus = get_cpu_quota()
+    ncpus = multiprocessing.cpu_count()
     configure_rio(cloud_defaults=True)
 
     bbox = bounds(extract_feature(region_code))
@@ -252,16 +256,16 @@ def execute_task(region_code, meta: TaskMetaData):
     # log('writing input', datetime.now())
     # write_input_data(ds)
     log("geomedian", datetime.now())
-    gm = assign_crs(xr_geomedian(ds, num_threads=1).load(scheduler="threads"), crs=output_crs)
+    gm = xr_geomedian(ds, num_threads=threads_per_chunk)
+    log("compute", datetime.now())
+    computed = gm.load(scheduler="threads", num_workers=int(ncpus / threads_per_chunk))
     log("writing", datetime.now())
-    write_geomedian(gm, region_code)
+    write_geomedian(assign_crs(computed, crs=output_crs), region_code)
 
     log("done", datetime.now())
 
 
 def main():
-    meta = TaskMetaData(start_date="2026-01-01", end_date="2026-12-31")
-
     tasks_list = read_tasks_list()
 
     while tasks_list != []:
