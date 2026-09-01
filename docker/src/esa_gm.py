@@ -60,14 +60,22 @@ s2_bands = [
     "thumbnail",
 ]
 
-measurements = ["blue", "green", "red", "nir"]
+# ~ measurements = ["swir22",
+                # ~ "swir16",
+                # ~ "rededge2",
+                # ~ "rededge3",
+                # ~ "rededge1",
+                # ~ "nir08"]
+
+measurements = ["swir22", "swir16"]
+
 masking_band = "scl"
-resolution = 10
+resolution = 20
 
 
-product = "2016-present"
-s3_bucket = "dea-dme-dev"
-s3_prefix = "products/solomons/geomad"
+product = "2026-2-band-test"
+# ~ s3_bucket = "dea-dme-dev"
+# ~ s3_prefix = "products/solomons/geomad"
 
 chunks = {"x": 1000, "y": 1000}
 threads_per_chunk = 4
