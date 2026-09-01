@@ -60,20 +60,24 @@ s2_bands = [
     "thumbnail",
 ]
 
-measurements = ["blue", "green", "red", "nir"]
+measurements = ["swir22",
+                "swir16",
+                "rededge2",
+                "rededge3",
+                "rededge1",
+                "nir08"]
+
 masking_band = "scl"
-resolution = 10
+resolution = 20
 
-
-product = "2016-present"
 s3_bucket = "dea-dme-dev"
 s3_prefix = "products/solomons/geomad"
 
 chunks = {"x": 1000, "y": 1000}
 threads_per_chunk = 4
 
-
 meta = TaskMetaData(start_date="2026-01-01", end_date="2026-12-31")
+product = f"{meta.start_date}-{meta.end_date}_{resolution}"
 
 
 def log(*args, **kwargs):
